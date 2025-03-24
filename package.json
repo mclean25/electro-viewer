@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.772.0",
     "@tanstack/react-router": "^1.114.27",
     "@tanstack/react-start": "^1.114.27",
     "react": "^19.0.0",
