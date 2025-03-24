@@ -1,0 +1,68 @@
+{
+  "vcs": {
+    "clientKind": "git",
+    "enabled": true,
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
+  },
+  "files": {
+    "ignore": [
+      "**/*.json",
+      "**/.nvmrc",
+      "**/.sst",
+      "**/_templates",
+      "**/cache",
+      "**/migrations/meta",
+      "./packages/**/dist",
+      "./packages/core/db/migrations",
+      "./packages/domain/integration/**/__snapshot.json",
+      "./packages/domain/integration/**/data",
+      "./packages/frontend/src/sst-env.d.ts",
+      "./packages/web/.next/**",
+      "./packages/web/.open-next/**",
+      "**/sst-env.d.ts"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "formatWithErrors": false,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 88,
+    "attributePosition": "auto"
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "a11y": {
+        "useKeyWithClickEvents": "off",
+        "useValidAnchor": "off",
+        "noSvgWithoutTitle": "off"
+      },
+      "complexity": {
+        "noForEach": "off",
+        "noStaticOnlyClass": "off",
+        "useFlatMap": "off"
+      },
+      "correctness": {
+        "noUnusedImports": "warn",
+        "noUnusedVariables": "warn",
+        "noUnsafeOptionalChaining": "off",
+        "useExhaustiveDependencies": "off"
+      },
+      "style": {
+        "useImportType": "off",
+        "noUselessElse": "off",
+        "noNonNullAssertion": "off",
+        "noParameterAssign": "off",
+        "useLiteralEnumMembers": "off"
+      },
+      "suspicious": {
+        "noExplicitAny": "off",
+        "noPrototypeBuiltins": "off",
+        "noAssignInExpressions": "off"
+      }
+    }
+  }
+}
