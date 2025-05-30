@@ -7,7 +7,6 @@
   },
   "files": {
     "ignore": [
-      "**/*.json",
       "**/.nvmrc",
       "**/.sst",
       "**/_templates",
