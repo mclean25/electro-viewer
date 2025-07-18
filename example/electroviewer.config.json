@@ -1,6 +1,0 @@
-{
-  "entities": "./entities.js",
-  "tableName": "MyTable",
-  "region": "us-east-1",
-  "service": "myservice"
-}
