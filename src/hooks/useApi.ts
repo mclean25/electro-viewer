@@ -1,7 +1,10 @@
-import { useState, useEffect } from 'react';
-import { ElectroViewerConfig, ParsedEntity, QueryRequest, QueryResponse } from '../types';
-
-const API_BASE = '/api';
+import { useState, useEffect } from "react";
+import {
+  ElectroViewerConfig,
+  ParsedEntity,
+  QueryRequest,
+  QueryResponse,
+} from "../types";
 
 export function useConfig() {
   const [config, setConfig] = useState<ElectroViewerConfig | null>(null);
@@ -9,20 +12,27 @@ export function useConfig() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/config`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
+    // In a real implementation, this would read the config file directly
+    // For now, let's use a simple approach that works in the browser
+    const loadConfig = async () => {
+      try {
+        // Try to fetch the config file from the public directory
+        const response = await fetch("/electroviewer.config.json");
+        if (!response.ok) {
+          throw new Error(`Failed to load config: ${response.status}`);
+        }
+        const data = await response.json();
         setConfig(data);
         setError(null);
-      })
-      .catch(err => {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load configuration");
         setConfig(null);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadConfig();
   }, []);
 
   return { config, loading, error };
@@ -34,20 +44,25 @@ export function useEntities() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/entities`)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then(data => {
+    const loadEntities = async () => {
+      try {
+        // Fetch the generated entities.json file
+        const response = await fetch("/entities.json");
+        if (!response.ok) {
+          throw new Error(`Failed to load entities: ${response.status}`);
+        }
+        const data = await response.json();
         setEntities(data);
         setError(null);
-      })
-      .catch(err => {
-        setError(err.message);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to load entities");
         setEntities([]);
-      })
-      .finally(() => setLoading(false));
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEntities();
   }, []);
 
   return { entities, loading, error };
@@ -62,10 +77,10 @@ export function useQuery() {
     setError(null);
 
     try {
-      const response = await fetch(`${API_BASE}/query`, {
-        method: 'POST',
+      const response = await fetch("/api/query", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(request),
       });
@@ -77,7 +92,7 @@ export function useQuery() {
       const data = await response.json();
       return data;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unknown error');
+      setError(err instanceof Error ? err.message : "Unknown error");
       return null;
     } finally {
       setLoading(false);
