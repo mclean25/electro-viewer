@@ -1,6 +1,6 @@
 // src/routes/index.tsx
 import * as fs from "node:fs";
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
 const filePath = "count.txt";
@@ -34,15 +34,27 @@ function Home() {
   const state = Route.useLoaderData();
 
   return (
-    <button
-      type="button"
-      onClick={() => {
-        updateCount({ data: 1 }).then(() => {
-          router.invalidate();
-        });
-      }}
-    >
-      Add 1 to {state}?
-    </button>
+    <div style={{ padding: "20px" }}>
+      <h1>Electro Viewer</h1>
+      
+      <div style={{ marginBottom: "20px" }}>
+        <button
+          type="button"
+          onClick={() => {
+            updateCount({ data: 1 }).then(() => {
+              router.invalidate();
+            });
+          }}
+        >
+          Add 1 to {state}?
+        </button>
+      </div>
+      
+      <nav>
+        <Link to="/entities" style={{ color: "#0066cc", textDecoration: "underline" }}>
+          View ElectroDB Entity Definitions
+        </Link>
+      </nav>
+    </div>
   );
 }
