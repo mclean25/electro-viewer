@@ -26,153 +26,119 @@ const getEntitySchemas = createServerFn({
   method: "GET",
 }).handler(async () => {
   try {
-    console.log("Loading entity schemas...");
+    console.log("Loading entity schemas using local test file...");
 
-    // Parse the TypeScript source directly
-    const fs = await import("node:fs/promises");
-    const entitiesContent = await fs.readFile(
-      "/Users/alex/dev/client-app/packages/domain/dynamo/schema/model/entities.ts",
-      "utf-8",
-    );
-
-    console.log("File loaded, length:", entitiesContent.length);
-
-    // Extract entity definitions using regex
-    const entityMatches = entitiesContent.matchAll(
-      /export const (\w+) = new Entity\(([\s\S]*?)\},\n  \{ client, table \},\n\);/g,
-    );
-
-    const schemas: EntitySchema[] = [];
-    let matchCount = 0;
-
-    for (const match of entityMatches) {
-      matchCount++;
-      const entityName = match[1];
-      const entityConfig = match[2];
-
-      console.log(`Found entity ${matchCount}: ${entityName}`);
-
-      // Parse the configuration to extract schema details
-      const modelMatch = entityConfig.match(/model:\s*\{([^}]+)\}/);
-      let name = entityName.toLowerCase();
-      let version = "1";
-      let service = "model";
-
-      if (modelMatch) {
-        const entityMatch = modelMatch[1].match(/entity:\s*["']([^"']+)["']/);
-        const versionMatch = modelMatch[1].match(/version:\s*["']([^"']+)["']/);
-
-        if (entityMatch) name = entityMatch[1];
-        if (versionMatch) version = versionMatch[1];
-      }
-
-      // Extract indexes more reliably
-      const indexes: EntitySchema["indexes"] = {};
-
-      // Look for primary index
-      const pkMatch = entityConfig.match(
-        /pk:\s*\{\s*field:\s*["']([^"']+)["']\s*,\s*composite:\s*\[([^\]]*)\]/,
-      );
-      const skMatch = entityConfig.match(
-        /sk:\s*\{\s*field:\s*["']([^"']+)["']\s*,\s*composite:\s*\[([^\]]*)\]/,
-      );
-
-      if (pkMatch) {
-        const pkField = pkMatch[1];
-        const pkComposite = pkMatch[2]
-          .split(",")
-          .map((s) => s.trim().replace(/["']/g, ""))
-          .filter(Boolean);
-
-        indexes.primary = {
-          pk: {
-            field: pkField,
-            composite: pkComposite,
-            template: "",
-          },
-        };
-
-        if (skMatch) {
-          const skField = skMatch[1];
-          const skComposite = skMatch[2]
-            .split(",")
-            .map((s) => s.trim().replace(/["']/g, ""))
-            .filter(Boolean);
-
-          indexes.primary.sk = {
-            field: skField,
-            composite: skComposite,
-            template: "",
-          };
-        }
-      }
-
-      // Look for GSI indexes
-      const gsiPattern = /(\w+):\s*\{\s*index:\s*["']([^"']+)["']/g;
-      let gsiMatch;
-      while ((gsiMatch = gsiPattern.exec(entityConfig)) !== null) {
-        const indexName = gsiMatch[1];
-        const gsiName = gsiMatch[2];
-
-        // Find the pk and sk for this GSI
-        const gsiSection = entityConfig.substring(gsiMatch.index);
-        const gsiPkMatch = gsiSection.match(
-          /pk:\s*\{\s*field:\s*["']([^"']+)["']\s*,\s*composite:\s*\[([^\]]*)\]/,
-        );
-        const gsiSkMatch = gsiSection.match(
-          /sk:\s*\{\s*field:\s*["']([^"']+)["']\s*,\s*composite:\s*\[([^\]]*)\]/,
-        );
-
-        if (gsiPkMatch) {
-          indexes[indexName] = {
-            pk: {
-              field: gsiPkMatch[1],
-              composite: gsiPkMatch[2]
-                .split(",")
-                .map((s) => s.trim().replace(/["']/g, ""))
-                .filter(Boolean),
-              template: "",
-            },
-          };
-
-          if (gsiSkMatch) {
-            indexes[indexName].sk = {
-              field: gsiSkMatch[1],
-              composite: gsiSkMatch[2]
-                .split(",")
-                .map((s) => s.trim().replace(/["']/g, ""))
-                .filter(Boolean),
-              template: "",
+    // Try to dynamically import the local test entities module
+    const localEntitiesPath = "/Users/alex/dev/electro-viewer/test/dynamo/service.ts";
+    
+    try {
+      // Use dynamic import directly since it's a local file with no dependencies
+      const entitiesModule = await import(localEntitiesPath);
+      
+      const schemas: EntitySchema[] = [];
+      
+      for (const [name, entity] of Object.entries(entitiesModule)) {
+        if (entity && typeof entity === 'object' && 'model' in entity) {
+          const model = (entity as any).model;
+          const indexes: EntitySchema["indexes"] = {};
+          
+          // Extract primary index
+          if (model.indexes && model.indexes.primary) {
+            const primary = model.indexes.primary;
+            indexes.primary = {
+              pk: {
+                field: primary.pk.field || "pk",
+                composite: primary.pk.facets?.map((f: any) => f.name) || primary.pk.composite || [],
+                template: model.prefixes?.[""]?.pk?.prefix || "",
+              },
             };
+            
+            if (primary.sk) {
+              indexes.primary.sk = {
+                field: primary.sk.field || "sk",
+                composite: primary.sk.facets?.map((f: any) => f.name) || primary.sk.composite || [],
+                template: model.prefixes?.[""]?.sk?.prefix || "",
+              };
+            }
           }
+          
+          // Extract GSI indexes
+          if (model.indexes) {
+            for (const [indexName, indexDef] of Object.entries(model.indexes)) {
+              if (indexName !== "primary") {
+                const idx = indexDef as any;
+                indexes[indexName] = {
+                  pk: {
+                    field: idx.pk?.field || `${indexName}pk`,
+                    composite: idx.pk?.facets?.map((f: any) => f.name) || idx.pk?.composite || [],
+                    template: "",
+                  },
+                };
+                
+                if (idx.sk) {
+                  indexes[indexName].sk = {
+                    field: idx.sk?.field || `${indexName}sk`,
+                    composite: idx.sk?.facets?.map((f: any) => f.name) || idx.sk?.composite || [],
+                    template: "",
+                  };
+                }
+              }
+            }
+          }
+          
+          // Extract attributes from the entity schema
+          const attributes: string[] = [];
+          if (model.schema?.attributes) {
+            attributes.push(...Object.keys(model.schema.attributes));
+          }
+          
+          schemas.push({
+            name: model.entity,
+            version: model.version,
+            service: model.service,
+            indexes,
+            attributes,
+          });
         }
       }
-
-      // Extract attributes
-      const attributesMatch = entityConfig.match(
-        /attributes:\s*\{([\s\S]*?)\n    \},\n\s*indexes/,
+      
+      console.log(`Total entities found via dynamic import: ${schemas.length}`);
+      return schemas;
+      
+    } catch (error) {
+      console.error("Failed to extract via dynamic import:", error);
+      
+      // Fall back to the original external file approach
+      console.log("Falling back to external file parsing...");
+      const externalPath = "/Users/alex/dev/client-app/packages/domain/dynamo/schema/model/entities.ts";
+      
+      const fs = await import("node:fs/promises");
+      const entitiesContent = await fs.readFile(externalPath, "utf-8");
+      const entityMatches = entitiesContent.matchAll(
+        /export const (\w+) = new Entity\(([\s\S]*?)\},\n  \{ client, table \},\n\);/g,
       );
-      const attributes: string[] = [];
-
-      if (attributesMatch) {
-        // Match attribute names at the beginning of lines
-        const attrMatches = attributesMatch[1].matchAll(/^\s{6}(\w+):\s*\{/gm);
-        for (const attrMatch of attrMatches) {
-          attributes.push(attrMatch[1]);
-        }
+      
+      const schemas: EntitySchema[] = [];
+      
+      for (const match of entityMatches) {
+        const entityName = match[1];
+        const entityConfig = match[2];
+        
+        // Basic extraction for fallback
+        const modelMatch = entityConfig.match(/entity:\s*["']([^"']+)["']/);
+        const versionMatch = entityConfig.match(/version:\s*["']([^"']+)["']/);
+        
+        schemas.push({
+          name: modelMatch?.[1] || entityName.toLowerCase(),
+          version: versionMatch?.[1] || "1",
+          service: "model",
+          indexes: { primary: { pk: { field: "pk", composite: [], template: "" } } },
+          attributes: [],
+        });
       }
-
-      schemas.push({
-        name,
-        version,
-        service,
-        indexes,
-        attributes,
-      });
+      
+      return schemas;
     }
-
-    console.log(`Total entities found: ${schemas.length}`);
-    return schemas;
   } catch (error) {
     console.error("Error loading entity schemas:", error);
     // Fallback: return hardcoded schema information based on what we read
