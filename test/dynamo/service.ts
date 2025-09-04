@@ -1,35 +1,9 @@
 import { Entity } from "electrodb";
 
 // Stub out the imports that would cause dependency issues
-const FeatureType = {} as any;
-const CreatedVia = "manual" as const;
-const ColKey = {} as any;
-const DetectedFye = {} as any;
-const FyeOverride = {} as any;
-const SyntheticFormulasByMetric = {} as any;
-const SyntheticMetricsLastUpdatedBy = {} as any;
-const SyntheticRowsMapByMetric = {} as any;
-const LiteLatestReported = {} as any;
-const AllFilingFilters = {} as any;
-const EXTERNAL_SOURCES = {} as any;
-const FILING_FORM_TYPES = {} as any;
-const IMPORT_TRIGGERS = {} as any;
-const InvokeLlmPriority = {} as any;
-const LlmBillingProps = {} as any;
-const EXPORT_TYPE_VALUES = {} as any;
-const UploadMethod = {} as any;
-const GenerateExcelModelOverrides = {} as any;
-const GenerateExcelModelQueryOptions = {} as any;
 const COMPANY_MODEL_STATUS_VALUES = "string";
 const COMPANY_MODEL_TRIGGER_VALUES = "string";
 const FILE_MODEL_STATUS_VALUES = "string";
-const dayInMilliseconds = 86400000;
-const GenerateModelOptionsSerialized = {} as any;
-const CustomAttributeType = (type: string) => type;
-const copiedFrom = {
-  type: "string",
-  required: false,
-};
 
 // Mock client and table - create a minimal valid DynamoDB client mock
 const client = {
@@ -150,7 +124,6 @@ export const Company = new Entity(
         default: () => Date.now(),
         set: () => Date.now(),
       },
-      copiedFrom,
     },
     indexes: {
       primary: {
@@ -230,7 +203,6 @@ export const FileModel = new Entity(
         default: () => Date.now(),
         set: () => Date.now(),
       },
-      copiedFrom,
     },
     indexes: {
       primary: {
@@ -324,7 +296,6 @@ export const CompanyModel = new Entity(
         default: () => Date.now(),
         set: () => Date.now(),
       },
-      copiedFrom,
     },
     indexes: {
       primary: {
@@ -352,3 +323,4 @@ export const CompanyModel = new Entity(
   },
   { client, table },
 );
+

@@ -30,38 +30,44 @@ const getEntitySchemas = createServerFn({
 
     // Try to dynamically import the local test entities module
     const localEntitiesPath = "/Users/alex/dev/electro-viewer/test/dynamo/service.ts";
-    
+
     try {
       // Use dynamic import directly since it's a local file with no dependencies
       const entitiesModule = await import(localEntitiesPath);
-      
+
       const schemas: EntitySchema[] = [];
-      
-      for (const [name, entity] of Object.entries(entitiesModule)) {
-        if (entity && typeof entity === 'object' && 'model' in entity) {
+
+      for (const [_name, entity] of Object.entries(entitiesModule)) {
+        if (entity && typeof entity === "object" && "model" in entity) {
           const model = (entity as any).model;
           const indexes: EntitySchema["indexes"] = {};
-          
+
           // Extract primary index
-          if (model.indexes && model.indexes.primary) {
+          if (model.indexes?.primary) {
             const primary = model.indexes.primary;
             indexes.primary = {
               pk: {
                 field: primary.pk.field || "pk",
-                composite: primary.pk.facets?.map((f: any) => f.name) || primary.pk.composite || [],
+                composite:
+                  primary.pk.facets?.map((f: any) => f.name) ||
+                  primary.pk.composite ||
+                  [],
                 template: model.prefixes?.[""]?.pk?.prefix || "",
               },
             };
-            
+
             if (primary.sk) {
               indexes.primary.sk = {
                 field: primary.sk.field || "sk",
-                composite: primary.sk.facets?.map((f: any) => f.name) || primary.sk.composite || [],
+                composite:
+                  primary.sk.facets?.map((f: any) => f.name) ||
+                  primary.sk.composite ||
+                  [],
                 template: model.prefixes?.[""]?.sk?.prefix || "",
               };
             }
           }
-          
+
           // Extract GSI indexes
           if (model.indexes) {
             for (const [indexName, indexDef] of Object.entries(model.indexes)) {
@@ -70,28 +76,34 @@ const getEntitySchemas = createServerFn({
                 indexes[indexName] = {
                   pk: {
                     field: idx.pk?.field || `${indexName}pk`,
-                    composite: idx.pk?.facets?.map((f: any) => f.name) || idx.pk?.composite || [],
+                    composite:
+                      idx.pk?.facets?.map((f: any) => f.name) ||
+                      idx.pk?.composite ||
+                      [],
                     template: "",
                   },
                 };
-                
+
                 if (idx.sk) {
                   indexes[indexName].sk = {
                     field: idx.sk?.field || `${indexName}sk`,
-                    composite: idx.sk?.facets?.map((f: any) => f.name) || idx.sk?.composite || [],
+                    composite:
+                      idx.sk?.facets?.map((f: any) => f.name) ||
+                      idx.sk?.composite ||
+                      [],
                     template: "",
                   };
                 }
               }
             }
           }
-          
+
           // Extract attributes from the entity schema
           const attributes: string[] = [];
           if (model.schema?.attributes) {
             attributes.push(...Object.keys(model.schema.attributes));
           }
-          
+
           schemas.push({
             name: model.entity,
             version: model.version,
@@ -101,204 +113,14 @@ const getEntitySchemas = createServerFn({
           });
         }
       }
-      
+
       console.log(`Total entities found via dynamic import: ${schemas.length}`);
       return schemas;
-      
     } catch (error) {
       console.error("Failed to extract via dynamic import:", error);
-      
-      // Fall back to the original external file approach
-      console.log("Falling back to external file parsing...");
-      const externalPath = "/Users/alex/dev/client-app/packages/domain/dynamo/schema/model/entities.ts";
-      
-      const fs = await import("node:fs/promises");
-      const entitiesContent = await fs.readFile(externalPath, "utf-8");
-      const entityMatches = entitiesContent.matchAll(
-        /export const (\w+) = new Entity\(([\s\S]*?)\},\n  \{ client, table \},\n\);/g,
-      );
-      
-      const schemas: EntitySchema[] = [];
-      
-      for (const match of entityMatches) {
-        const entityName = match[1];
-        const entityConfig = match[2];
-        
-        // Basic extraction for fallback
-        const modelMatch = entityConfig.match(/entity:\s*["']([^"']+)["']/);
-        const versionMatch = entityConfig.match(/version:\s*["']([^"']+)["']/);
-        
-        schemas.push({
-          name: modelMatch?.[1] || entityName.toLowerCase(),
-          version: versionMatch?.[1] || "1",
-          service: "model",
-          indexes: { primary: { pk: { field: "pk", composite: [], template: "" } } },
-          attributes: [],
-        });
-      }
-      
-      return schemas;
     }
   } catch (error) {
     console.error("Error loading entity schemas:", error);
-    // Fallback: return hardcoded schema information based on what we read
-    return [
-      {
-        name: "company",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: { field: "pk", composite: [], template: "$model" },
-            sk: {
-              field: "sk",
-              composite: ["companyId"],
-              template: "$company_1#companyid_${companyId}",
-            },
-          },
-        },
-        attributes: [
-          "companyId",
-          "companyName",
-          "publicCompanyInfo",
-          "fileCount",
-          "modifiedBy",
-          "createdBy",
-          "createdVia",
-          "fyeOverride",
-          "createdAt",
-          "updatedAt",
-        ],
-      },
-      {
-        name: "fileModel",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: {
-              field: "pk",
-              composite: ["companyId"],
-              template: "$model#companyid_${companyId}",
-            },
-            sk: {
-              field: "sk",
-              composite: ["fileId"],
-              template: "$filemodel_1#fileid_${fileId}",
-            },
-          },
-        },
-        attributes: [
-          "companyId",
-          "fileId",
-          "status",
-          "fileName",
-          "uploadedFileName",
-          "uploadMethod",
-          "metadata",
-          "createdBy",
-          "createdVia",
-          "archivedAt",
-          "createdAt",
-          "updatedAt",
-        ],
-      },
-      {
-        name: "companyModel",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: {
-              field: "pk",
-              composite: ["companyId"],
-              template: "$model#companyid_${companyId}",
-            },
-            sk: {
-              field: "sk",
-              composite: ["createdAt"],
-              template: "$companymodel_1#createdat_${createdAt}",
-            },
-          },
-          byStatus: {
-            pk: {
-              field: "gsi1pk",
-              composite: ["companyId"],
-              template: "$model#companyid_${companyId}",
-            },
-            sk: {
-              field: "gsi1sk",
-              composite: ["status", "createdAt"],
-              template: "$companymodel_1#status_${status}#createdat_${createdAt}",
-            },
-          },
-        },
-        attributes: [
-          "companyId",
-          "status",
-          "isInitial",
-          "trigger",
-          "executionArn",
-          "excelModel",
-          "numberOfTables",
-          "liteModel",
-          "createdAt",
-          "updatedAt",
-        ],
-      },
-      {
-        name: "companyModelExecution",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: {
-              field: "pk",
-              composite: ["companyId"],
-              template: "$model#companyid_${companyId}",
-            },
-            sk: {
-              field: "sk",
-              composite: ["executionArn"],
-              template: "$companymodelexecution_1#executionarn_${executionArn}",
-            },
-          },
-        },
-        attributes: ["companyId", "executionArn", "status", "startedAt", "stoppedAt"],
-      },
-      {
-        name: "initialCompanyModelEvent",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: { field: "pk", composite: [], template: "$model" },
-            sk: {
-              field: "sk",
-              composite: ["companyId"],
-              template: "$initialcompanymodelevent_1#companyid_${companyId}",
-            },
-          },
-        },
-        attributes: ["companyId", "createdAt"],
-      },
-      {
-        name: "queuedCompanyModelGeneration",
-        version: "1",
-        service: "model",
-        indexes: {
-          primary: {
-            pk: { field: "pk", composite: [], template: "$model" },
-            sk: {
-              field: "sk",
-              composite: ["companyId"],
-              template: "$queuedcompanymodelgeneration_1#companyid_${companyId}",
-            },
-          },
-        },
-        attributes: ["companyId", "createdAt"],
-      },
-    ];
   }
 });
 
@@ -313,9 +135,10 @@ function EntitiesViewer() {
   return (
     <div style={{ padding: "20px", fontFamily: "monospace" }}>
       <h1>ElectroDB Entity Definitions</h1>
-      <p>Total entities: {schemas.length}</p>
+      {!schemas && <div>Didn't load any schemas...</div>}
+      <p>Total entities: {schemas?.length}</p>
 
-      {schemas.map((schema) => (
+      {schemas?.map((schema) => (
         <div
           key={schema.name}
           style={{
@@ -408,4 +231,3 @@ function EntitiesViewer() {
     </div>
   );
 }
-
