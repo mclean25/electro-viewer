@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as EntityEntityNameRouteImport } from './routes/entity.$entityName'
 
 const EntitiesRoute = EntitiesRouteImport.update({
   id: '/entities',
@@ -22,31 +23,40 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EntityEntityNameRoute = EntityEntityNameRouteImport.update({
+  id: '/entity/$entityName',
+  path: '/entity/$entityName',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRoute
+  '/entity/$entityName': typeof EntityEntityNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRoute
+  '/entity/$entityName': typeof EntityEntityNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/entities': typeof EntitiesRoute
+  '/entity/$entityName': typeof EntityEntityNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/entities'
+  fullPaths: '/' | '/entities' | '/entity/$entityName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/entities'
-  id: '__root__' | '/' | '/entities'
+  to: '/' | '/entities' | '/entity/$entityName'
+  id: '__root__' | '/' | '/entities' | '/entity/$entityName'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   EntitiesRoute: typeof EntitiesRoute
+  EntityEntityNameRoute: typeof EntityEntityNameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -65,12 +75,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/entity/$entityName': {
+      id: '/entity/$entityName'
+      path: '/entity/$entityName'
+      fullPath: '/entity/$entityName'
+      preLoaderRoute: typeof EntityEntityNameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   EntitiesRoute: EntitiesRoute,
+  EntityEntityNameRoute: EntityEntityNameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

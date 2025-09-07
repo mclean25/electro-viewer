@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
 interface EntitySchema {
@@ -150,10 +150,27 @@ function EntitiesViewer() {
           }}
         >
           <h2 style={{ color: "#333", marginTop: 0 }}>
-            {schema.name}{" "}
+            <Link 
+              to="/entity/$entityName" 
+              params={{ entityName: schema.name }}
+              style={{ color: "#333", textDecoration: "none" }}
+              onMouseEnter={(e) => e.currentTarget.style.textDecoration = "underline"}
+              onMouseLeave={(e) => e.currentTarget.style.textDecoration = "none"}
+            >
+              {schema.name}
+            </Link>{" "}
             <span style={{ fontSize: "14px", color: "#666" }}>(v{schema.version})</span>
           </h2>
           <p style={{ color: "#666" }}>Service: {schema.service}</p>
+          <p style={{ fontSize: "12px" }}>
+            <Link 
+              to="/entity/$entityName" 
+              params={{ entityName: schema.name }}
+              style={{ color: "#0066cc" }}
+            >
+              → Query this entity
+            </Link>
+          </p>
 
           <h3>Indexes:</h3>
           {Object.entries(schema.indexes).map(([indexName, index]) => (
