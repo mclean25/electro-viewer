@@ -10,6 +10,7 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import { config } from "../../electro-viewer-config";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
+import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 
 interface EntitySchema {
 	name: string;
@@ -625,66 +626,7 @@ function EntityDetail() {
 						<>
 							<p>Found {queryResult.count} item(s)</p>
 							{queryResult.data.length > 0 ? (
-								<div
-									style={{
-										maxHeight: "400px",
-										overflow: "auto",
-										marginTop: "10px",
-									}}
-								>
-									<table
-										style={{
-											width: "100%",
-											borderCollapse: "collapse",
-											fontSize: "12px",
-										}}
-									>
-										<thead>
-											<tr style={{ backgroundColor: "#f5f5f5" }}>
-												{Object.keys(queryResult.data[0]).map((key) => (
-													<th
-														key={key}
-														style={{
-															padding: "8px",
-															border: "1px solid #ddd",
-															textAlign: "left",
-														}}
-													>
-														{key}
-													</th>
-												))}
-											</tr>
-										</thead>
-										<tbody>
-											{queryResult.data.map((item: any, index: number) => (
-												<tr key={index}>
-													{Object.entries(item).map(([key, value]) => (
-														<td
-															key={key}
-															style={{
-																padding: "8px",
-																border: "1px solid #ddd",
-																verticalAlign: "top",
-															}}
-														>
-															<pre
-																style={{
-																	margin: 0,
-																	whiteSpace: "pre-wrap",
-																	wordBreak: "break-word",
-																}}
-															>
-																{typeof value === "object"
-																	? JSON.stringify(value, null, 2)
-																	: String(value)}
-															</pre>
-														</td>
-													))}
-												</tr>
-											))}
-										</tbody>
-									</table>
-								</div>
+								<EntityQueryResultsTable data={queryResult.data} />
 							) : (
 								<p style={{ color: "#666" }}>No items found with these keys</p>
 							)}
