@@ -34,12 +34,13 @@ function Home() {
   const state = Route.useLoaderData();
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h1>Electro Viewer</h1>
+    <div className="p-5">
+      <h1 className="text-3xl font-bold mb-6">Electro Viewer</h1>
       
-      <div style={{ marginBottom: "20px" }}>
+      <div className="mb-5">
         <button
           type="button"
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
           onClick={() => {
             updateCount({ data: 1 }).then(() => {
               router.invalidate();
@@ -51,7 +52,7 @@ function Home() {
       </div>
       
       <nav>
-        <Link to="/entities" style={{ color: "#0066cc", textDecoration: "underline" }}>
+        <Link to="/entities" className="text-blue-600 underline hover:text-blue-800">
           View ElectroDB Entity Definitions
         </Link>
       </nav>
