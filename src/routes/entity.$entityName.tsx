@@ -118,10 +118,15 @@ const queryDynamoDB = createServerFn({
 	method: "POST",
 })
 	.validator(
-		(params: { pk: string; sk?: string; indexName?: string }) => params,
+		(params: {
+			pk: string;
+			sk?: string;
+			indexName?: string;
+			entityName?: string;
+		}) => params,
 	)
 	.handler(async ({ data }) => {
-		const { pk, sk, indexName } = data;
+		const { pk, sk, indexName, entityName } = data;
 
 		try {
 			// Use AWS SDK's fromIni credential provider for SSO profiles
@@ -149,15 +154,25 @@ const queryDynamoDB = createServerFn({
 					count: result.Item ? 1 : 0,
 				};
 			} else {
-				// Use Query for PK-only queries
-				const command = new QueryCommand({
+				// Use Query for PK-only queries with entity filter
+				const queryParams: any = {
 					TableName: config.table,
 					IndexName: indexName,
 					KeyConditionExpression: "pk = :pk",
 					ExpressionAttributeValues: {
 						":pk": pk,
 					},
-				});
+				};
+
+				// Add entity filter when entityName is provided
+				// This is to filter for relevant results when the PK contains other items
+				if (entityName) {
+					queryParams.FilterExpression = "#edb_e = :entityName";
+					queryParams.ExpressionAttributeNames = { "#edb_e": "__edb_e__" };
+					queryParams.ExpressionAttributeValues[":entityName"] = entityName;
+				}
+
+				const command = new QueryCommand(queryParams);
 
 				const result = await docClient.send(command);
 				return {
@@ -219,7 +234,7 @@ function EntityDetail() {
 				// Only include SK if it has meaningful values (not just the static template)
 				// Check if any SK values were actually provided
 				const hasSkValues = currentIndex.sk.composite.some(
-					(field) => skValues[field] && skValues[field].trim() !== ""
+					(field) => skValues[field] && skValues[field].trim() !== "",
 				);
 				if (hasSkValues || currentIndex.sk.composite.length === 0) {
 					sk = skKey;
@@ -231,6 +246,7 @@ function EntityDetail() {
 					pk,
 					sk,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
+					entityName: schema.name,
 				},
 			});
 
