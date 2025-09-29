@@ -9,65 +9,80 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as EntitiesRouteImport } from './routes/entities'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as EntityEntityNameRouteImport } from './routes/entity.$entityName'
+import { Route as TablesTableNameRouteImport } from './routes/tables.$tableName'
+import { Route as TablesTableNameEntitiesRouteImport } from './routes/tables.$tableName.entities'
+import { Route as TablesTableNameEntityEntityNameRouteImport } from './routes/tables.$tableName.entity.$entityName'
 
-const EntitiesRoute = EntitiesRouteImport.update({
-  id: '/entities',
-  path: '/entities',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EntityEntityNameRoute = EntityEntityNameRouteImport.update({
-  id: '/entity/$entityName',
-  path: '/entity/$entityName',
+const TablesTableNameRoute = TablesTableNameRouteImport.update({
+  id: '/tables/$tableName',
+  path: '/tables/$tableName',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TablesTableNameEntitiesRoute = TablesTableNameEntitiesRouteImport.update({
+  id: '/entities',
+  path: '/entities',
+  getParentRoute: () => TablesTableNameRoute,
+} as any)
+const TablesTableNameEntityEntityNameRoute =
+  TablesTableNameEntityEntityNameRouteImport.update({
+    id: '/entity/$entityName',
+    path: '/entity/$entityName',
+    getParentRoute: () => TablesTableNameRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/entities': typeof EntitiesRoute
-  '/entity/$entityName': typeof EntityEntityNameRoute
+  '/tables/$tableName': typeof TablesTableNameRouteWithChildren
+  '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
+  '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/entities': typeof EntitiesRoute
-  '/entity/$entityName': typeof EntityEntityNameRoute
+  '/tables/$tableName': typeof TablesTableNameRouteWithChildren
+  '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
+  '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/entities': typeof EntitiesRoute
-  '/entity/$entityName': typeof EntityEntityNameRoute
+  '/tables/$tableName': typeof TablesTableNameRouteWithChildren
+  '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
+  '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/entities' | '/entity/$entityName'
+  fullPaths:
+    | '/'
+    | '/tables/$tableName'
+    | '/tables/$tableName/entities'
+    | '/tables/$tableName/entity/$entityName'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/entities' | '/entity/$entityName'
-  id: '__root__' | '/' | '/entities' | '/entity/$entityName'
+  to:
+    | '/'
+    | '/tables/$tableName'
+    | '/tables/$tableName/entities'
+    | '/tables/$tableName/entity/$entityName'
+  id:
+    | '__root__'
+    | '/'
+    | '/tables/$tableName'
+    | '/tables/$tableName/entities'
+    | '/tables/$tableName/entity/$entityName'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  EntitiesRoute: typeof EntitiesRoute
-  EntityEntityNameRoute: typeof EntityEntityNameRoute
+  TablesTableNameRoute: typeof TablesTableNameRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/entities': {
-      id: '/entities'
-      path: '/entities'
-      fullPath: '/entities'
-      preLoaderRoute: typeof EntitiesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -75,20 +90,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/entity/$entityName': {
-      id: '/entity/$entityName'
-      path: '/entity/$entityName'
-      fullPath: '/entity/$entityName'
-      preLoaderRoute: typeof EntityEntityNameRouteImport
+    '/tables/$tableName': {
+      id: '/tables/$tableName'
+      path: '/tables/$tableName'
+      fullPath: '/tables/$tableName'
+      preLoaderRoute: typeof TablesTableNameRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/tables/$tableName/entities': {
+      id: '/tables/$tableName/entities'
+      path: '/entities'
+      fullPath: '/tables/$tableName/entities'
+      preLoaderRoute: typeof TablesTableNameEntitiesRouteImport
+      parentRoute: typeof TablesTableNameRoute
+    }
+    '/tables/$tableName/entity/$entityName': {
+      id: '/tables/$tableName/entity/$entityName'
+      path: '/entity/$entityName'
+      fullPath: '/tables/$tableName/entity/$entityName'
+      preLoaderRoute: typeof TablesTableNameEntityEntityNameRouteImport
+      parentRoute: typeof TablesTableNameRoute
     }
   }
 }
 
+interface TablesTableNameRouteChildren {
+  TablesTableNameEntitiesRoute: typeof TablesTableNameEntitiesRoute
+  TablesTableNameEntityEntityNameRoute: typeof TablesTableNameEntityEntityNameRoute
+}
+
+const TablesTableNameRouteChildren: TablesTableNameRouteChildren = {
+  TablesTableNameEntitiesRoute: TablesTableNameEntitiesRoute,
+  TablesTableNameEntityEntityNameRoute: TablesTableNameEntityEntityNameRoute,
+}
+
+const TablesTableNameRouteWithChildren = TablesTableNameRoute._addFileChildren(
+  TablesTableNameRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  EntitiesRoute: EntitiesRoute,
-  EntityEntityNameRoute: EntityEntityNameRoute,
+  TablesTableNameRoute: TablesTableNameRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

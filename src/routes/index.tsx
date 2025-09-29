@@ -64,19 +64,21 @@ function Home() {
 					{data.tables.length > 0 ? (
 						<div className="bg-gray-50 p-4 rounded">
 							{data.tables.map((tableName: string) => (
-								<div
+								<Link
 									key={tableName}
-									className={`p-2 mb-1 rounded text-sm ${
+									to={`/tables/$tableName/entities`}
+									params={{ tableName }}
+									className={`block p-2 mb-1 rounded text-sm hover:opacity-80 transition-opacity ${
 										tableName === data.currentTable
 											? "bg-green-50 border border-green-500"
-											: "bg-white border border-gray-300"
+											: "bg-white border border-gray-300 hover:bg-gray-50"
 									}`}
 								>
 									{tableName}
 									{tableName === data.currentTable && (
-										<span className="text-green-500 ml-2">← Current</span>
+										<span className="text-green-500 ml-2">← Current (Configured)</span>
 									)}
-								</div>
+								</Link>
 							))}
 						</div>
 					) : (
@@ -94,14 +96,6 @@ function Home() {
 				</div>
 			)}
 
-			<nav>
-				<Link
-					to="/entities"
-					className="text-blue-600 underline text-base hover:text-blue-700"
-				>
-					View ElectroDB Entity Definitions →
-				</Link>
-			</nav>
 		</div>
 	);
 }

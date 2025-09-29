@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -10,8 +10,8 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
 import { config } from "../../electro-viewer-config";
-import { buildElectroDBKey } from "../utils/electrodb-keys";
-import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
+import { buildElectroDBKey } from "../../utils/electrodb-keys";
+import { EntityQueryResultsTable } from "../../components/EntityQueryResultsTable";
 
 interface EntitySchema {
 	name: string;
@@ -23,14 +23,14 @@ interface EntitySchema {
 				field: string;
 				composite: string[];
 				template?: string;
-			};
+			}
 			sk?: {
 				field: string;
 				composite: string[];
 				template?: string;
-			};
-		};
-	};
+			}
+		}
+	}
 	attributes: string[];
 }
 
@@ -60,13 +60,13 @@ const getEntitySchema = createServerFn({
 									field: primary.pk.field || "pk",
 									composite: primary.pk.facets || primary.pk.composite || [],
 								},
-							};
+							}
 
 							if (primary.sk) {
 								indexes.primary.sk = {
 									field: primary.sk.field || "sk",
 									composite: primary.sk.facets || primary.sk.composite || [],
-								};
+								}
 							}
 						}
 
@@ -82,13 +82,13 @@ const getEntitySchema = createServerFn({
 											field: idx.pk?.field || `${indexName}pk`,
 											composite: idx.pk?.facets || idx.pk?.composite || [],
 										},
-									};
+									}
 
 									if (idx.sk) {
 										indexes[indexName].sk = {
 											field: idx.sk?.field || `${indexName}sk`,
 											composite: idx.sk?.facets || idx.sk?.composite || [],
-										};
+										}
 									}
 								}
 							}
@@ -105,7 +105,7 @@ const getEntitySchema = createServerFn({
 							service: model.service,
 							indexes,
 							attributes,
-						} as EntitySchema;
+						} as EntitySchema
 					}
 				}
 			}
@@ -120,7 +120,7 @@ const getEntitySchema = createServerFn({
 			
 			throw error;
 		}
-	});
+	})
 
 // Server function to query DynamoDB
 const queryDynamoDB = createServerFn({
@@ -142,7 +142,7 @@ const queryDynamoDB = createServerFn({
 			const client = new DynamoDBClient({
 				region: config.region,
 				credentials: fromIni({ profile: config.profile }),
-			});
+			})
 
 			const docClient = DynamoDBDocumentClient.from(client);
 
@@ -154,14 +154,14 @@ const queryDynamoDB = createServerFn({
 						pk,
 						sk,
 					},
-				});
+				})
 
 				const result = await docClient.send(command);
 				return {
 					success: true,
 					data: result.Item ? [result.Item] : [],
 					count: result.Item ? 1 : 0,
-				};
+				}
 			} else {
 				// Use Query for PK-only queries with entity filter
 				const queryParams: any = {
@@ -171,7 +171,7 @@ const queryDynamoDB = createServerFn({
 					ExpressionAttributeValues: {
 						":pk": pk,
 					},
-				};
+				}
 
 				// Add entity filter when entityName is provided
 				// This is to filter for relevant results when the PK contains other items
@@ -188,7 +188,7 @@ const queryDynamoDB = createServerFn({
 					success: true,
 					data: result.Items || [],
 					count: result.Count || 0,
-				};
+				}
 			}
 		} catch (error: any) {
 			console.error("DynamoDB query error:", error);
@@ -196,20 +196,20 @@ const queryDynamoDB = createServerFn({
 				success: false,
 				error: error.message || "Unknown error occurred",
 				errorType: error.name || "UnknownError",
-			};
+			}
 		}
-	});
+	})
 
-export const Route = createFileRoute("/entity/$entityName")({
+export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
 	component: EntityDetail,
 	loader: async ({ params }) => {
 		const schema = await getEntitySchema({ data: params.entityName });
-		return { entityName: params.entityName, schema };
+		return { entityName: params.entityName, tableName: params.tableName, schema };
 	},
 });
 
 function EntityDetail() {
-	const { entityName, schema } = Route.useLoaderData();
+	const { entityName, tableName, schema } = Route.useLoaderData();
 	const [selectedIndex, setSelectedIndex] = useState("primary");
 	const [pkValues, setPkValues] = useState<Record<string, string>>({});
 	const [skValues, setSkValues] = useState<Record<string, string>>({});
@@ -229,7 +229,7 @@ function EntityDetail() {
 				currentIndex.pk.composite,
 				pkValues,
 				schema,
-			);
+			)
 
 			// Build SK if present using ElectroDB logic
 			let sk: string | undefined = undefined;
@@ -239,14 +239,14 @@ function EntityDetail() {
 					currentIndex.sk.composite,
 					skValues,
 					schema,
-				);
+				)
 				// Only include SK if it has meaningful values (not just the static template)
 				// Check if any SK values were actually provided
 				const hasSkValues = currentIndex.sk.composite.some(
 					(field) => skValues[field] && skValues[field].trim() !== "",
-				);
+				)
 				if (hasSkValues || currentIndex.sk.composite.length === 0) {
-					sk = skKey;
+					sk = skKey
 				}
 			}
 
@@ -257,7 +257,7 @@ function EntityDetail() {
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 					entityName: schema.name,
 				},
-			});
+			})
 
 			// Add the actual query keys to the result for display
 			setQueryResult({
@@ -267,7 +267,7 @@ function EntityDetail() {
 					sk,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 				},
-			});
+			})
 		} catch (error) {
 			console.error("Query error:", error);
 			setQueryResult({
@@ -290,35 +290,40 @@ function EntityDetail() {
 						: undefined,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 				},
-			});
+			})
 		} finally {
 			setIsQuerying(false);
 		}
-	};
+	}
 
 	return (
-		<div style={{ padding: "20px", fontFamily: "monospace" }}>
-			<h1>Entity: {entityName}</h1>
-			<p style={{ color: "#666" }}>
-				Version: {schema.version} | Service: {schema.service}
+		<div className="p-5 font-mono">
+			<div className="mb-4">
+				<Link 
+					to="/tables/$tableName/entities" 
+					params={{ tableName }}
+					className="text-blue-600 hover:text-blue-700 text-sm"
+				>
+					← Back to {tableName} Entities
+				</Link>
+			</div>
+			
+			<h1 className="text-2xl mb-2">Entity: {entityName}</h1>
+			<p className="text-gray-600 mb-5">
+				Version: {schema.version} | Service: {schema.service} | Table: {tableName}
 			</p>
 
-			<div style={{ marginBottom: "20px" }}>
-				<h3>Select Index:</h3>
+			<div className="mb-5">
+				<h3 className="text-lg mb-2">Select Index:</h3>
 				<select
 					value={selectedIndex}
 					onChange={(e) => {
 						setSelectedIndex(e.target.value);
-						setPkValues({});
-						setSkValues({});
+						setPkValues({})
+						setSkValues({})
 						setQueryResult(null);
 					}}
-					style={{
-						padding: "8px",
-						fontSize: "14px",
-						border: "1px solid #ccc",
-						borderRadius: "4px",
-					}}
+					className="p-2 text-sm border border-gray-300 rounded"
 				>
 					{Object.keys(schema.indexes).map((indexName) => (
 						<option key={indexName} value={indexName}>
@@ -328,46 +333,25 @@ function EntityDetail() {
 				</select>
 			</div>
 
-			<div
-				style={{
-					marginBottom: "20px",
-					padding: "15px",
-					backgroundColor: "#f5f5f5",
-					borderRadius: "5px",
-				}}
-			>
-				<h3>Build Query Keys</h3>
+			<div className="mb-5 p-4 bg-gray-50 rounded">
+				<h3 className="text-lg mb-3">Build Query Keys</h3>
 
-				<div style={{ marginBottom: "15px" }}>
-					<h4>Partition Key ({currentIndex.pk.field})</h4>
+				<div className="mb-4">
+					<h4 className="font-semibold mb-2">Partition Key ({currentIndex.pk.field})</h4>
 					{currentIndex.pk.composite.length === 0 ? (
 						<div>
-							<p style={{ color: "#666", fontSize: "12px" }}>
+							<p className="text-gray-600 text-xs mb-2">
 								No composite attributes (static key)
 							</p>
-							<div style={{ marginTop: "10px" }}>
+							<div className="mb-2">
 								<strong>Key Pattern:</strong>{" "}
-								<code
-									style={{
-										backgroundColor: "#fff",
-										padding: "4px 8px",
-										border: "1px solid #ddd",
-									}}
-								>
+								<code className="bg-white p-1 border border-gray-300 rounded text-xs">
 									${"{service}"}
 								</code>
 							</div>
-							<div style={{ marginTop: "8px" }}>
+							<div>
 								<strong>Constructed Key:</strong>{" "}
-								<code
-									style={{
-										backgroundColor: "#e8f5e8",
-										padding: "4px 8px",
-										border: "1px solid #4caf50",
-										color: "#2e7d32",
-										fontWeight: "bold",
-									}}
-								>
+								<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
 									{buildElectroDBKey(
 										true,
 										currentIndex.pk.composite,
@@ -380,8 +364,8 @@ function EntityDetail() {
 					) : (
 						<>
 							{currentIndex.pk.composite.map((field) => (
-								<div key={field} style={{ marginBottom: "10px" }}>
-									<label style={{ display: "block", marginBottom: "5px" }}>
+								<div key={field} className="mb-2">
+									<label className="block mb-1 text-sm">
 										{field}:
 									</label>
 									<input
@@ -390,40 +374,21 @@ function EntityDetail() {
 										onChange={(e) =>
 											setPkValues({ ...pkValues, [field]: e.target.value })
 										}
-										placeholder={`Enter ${field}`}
-										style={{
-											padding: "8px",
-											width: "300px",
-											border: "1px solid #ccc",
-											borderRadius: "4px",
-										}}
+										placeholder={"Enter ${field}"}
+										className="p-2 w-80 border border-gray-300 rounded"
 									/>
 								</div>
 							))}
-							<div style={{ marginTop: "10px" }}>
+							<div className="mb-2">
 								<strong>Key Pattern:</strong>{" "}
-								<code
-									style={{
-										backgroundColor: "#fff",
-										padding: "4px 8px",
-										border: "1px solid #ddd",
-									}}
-								>
+								<code className="bg-white p-1 border border-gray-300 rounded text-xs">
 									${"{service}"}#
 									{currentIndex.pk.composite.map((c) => `{${c}}`).join("#")}
 								</code>
 							</div>
-							<div style={{ marginTop: "8px" }}>
+							<div>
 								<strong>Constructed Key:</strong>{" "}
-								<code
-									style={{
-										backgroundColor: "#e8f5e8",
-										padding: "4px 8px",
-										border: "1px solid #4caf50",
-										color: "#2e7d32",
-										fontWeight: "bold",
-									}}
-								>
+								<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
 									{buildElectroDBKey(
 										true,
 										currentIndex.pk.composite,
@@ -437,36 +402,22 @@ function EntityDetail() {
 				</div>
 
 				{currentIndex.sk && (
-					<div style={{ marginBottom: "15px" }}>
-						<h4>Sort Key ({currentIndex.sk.field})</h4>
+					<div className="mb-4">
+						<h4 className="font-semibold mb-2">Sort Key ({currentIndex.sk.field})</h4>
 						{currentIndex.sk.composite.length === 0 ? (
 							<div>
-								<p style={{ color: "#666", fontSize: "12px" }}>
+								<p className="text-gray-600 text-xs mb-2">
 									No composite attributes
 								</p>
-								<div style={{ marginTop: "10px" }}>
+								<div className="mb-2">
 									<strong>Key Pattern:</strong>{" "}
-									<code
-										style={{
-											backgroundColor: "#fff",
-											padding: "4px 8px",
-											border: "1px solid #ddd",
-										}}
-									>
+									<code className="bg-white p-1 border border-gray-300 rounded text-xs">
 										${"{entity}"}_{"{version}"}
 									</code>
 								</div>
-								<div style={{ marginTop: "8px" }}>
+								<div>
 									<strong>Constructed Key:</strong>{" "}
-									<code
-										style={{
-											backgroundColor: "#e8f5e8",
-											padding: "4px 8px",
-											border: "1px solid #4caf50",
-											color: "#2e7d32",
-											fontWeight: "bold",
-										}}
-									>
+									<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
 										{buildElectroDBKey(
 											false,
 											currentIndex.sk.composite,
@@ -479,8 +430,8 @@ function EntityDetail() {
 						) : (
 							<>
 								{currentIndex.sk.composite.map((field) => (
-									<div key={field} style={{ marginBottom: "10px" }}>
-										<label style={{ display: "block", marginBottom: "5px" }}>
+									<div key={field} className="mb-2">
+										<label className="block mb-1 text-sm">
 											{field}:
 										</label>
 										<input
@@ -489,40 +440,21 @@ function EntityDetail() {
 											onChange={(e) =>
 												setSkValues({ ...skValues, [field]: e.target.value })
 											}
-											placeholder={`Enter ${field}`}
-											style={{
-												padding: "8px",
-												width: "300px",
-												border: "1px solid #ccc",
-												borderRadius: "4px",
-											}}
+											placeholder={"Enter ${field}"}
+											className="p-2 w-80 border border-gray-300 rounded"
 										/>
 									</div>
 								))}
-								<div style={{ marginTop: "10px" }}>
+								<div className="mb-2">
 									<strong>Key Pattern:</strong>{" "}
-									<code
-										style={{
-											backgroundColor: "#fff",
-											padding: "4px 8px",
-											border: "1px solid #ddd",
-										}}
-									>
+									<code className="bg-white p-1 border border-gray-300 rounded text-xs">
 										${"{entity}"}_{"{version}"}#
 										{currentIndex.sk.composite.map((c) => `{${c}}`).join("#")}
 									</code>
 								</div>
-								<div style={{ marginTop: "8px" }}>
+								<div>
 									<strong>Constructed Key:</strong>{" "}
-									<code
-										style={{
-											backgroundColor: "#e8f5e8",
-											padding: "4px 8px",
-											border: "1px solid #4caf50",
-											color: "#2e7d32",
-											fontWeight: "bold",
-										}}
-									>
+									<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
 										{buildElectroDBKey(
 											false,
 											currentIndex.sk.composite,
@@ -539,74 +471,40 @@ function EntityDetail() {
 				<button
 					onClick={handleQuery}
 					disabled={isQuerying}
-					style={{
-						padding: "10px 20px",
-						backgroundColor: isQuerying ? "#ccc" : "#0066cc",
-						color: "white",
-						border: "none",
-						borderRadius: "4px",
-						cursor: isQuerying ? "not-allowed" : "pointer",
-						fontSize: "14px",
-					}}
+					className={`px-5 py-2 text-white border-none rounded cursor-pointer text-sm ${
+						isQuerying 
+							? "bg-gray-400 cursor-not-allowed" 
+							: "bg-blue-600 hover:bg-blue-700"
+					}`}
 				>
 					{isQuerying ? "Querying..." : "Query DynamoDB"}
 				</button>
 			</div>
 
 			{queryResult && (
-				<div
-					style={{
-						marginTop: "20px",
-						padding: "15px",
-						backgroundColor: queryResult.success ? "#f0f9f0" : "#fff0f0",
-						border: `1px solid ${queryResult.success ? "#4caf50" : "#f44336"}`,
-						borderRadius: "5px",
-					}}
-				>
-					<h3>Query Result</h3>
+				<div className={`mt-5 p-4 border rounded ${
+					queryResult.success 
+						? "bg-green-50 border-green-500" 
+						: "bg-red-50 border-red-500"
+				}`}>
+					<h3 className="text-lg mb-3">Query Result</h3>
 
 					{/* Show the actual query keys used */}
-					<div
-						style={{
-							marginBottom: "15px",
-							padding: "10px",
-							backgroundColor: "#f8f8f8",
-							borderRadius: "3px",
-							border: "1px solid #ddd",
-						}}
-					>
-						<h4
-							style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#333" }}
-						>
+					<div className="mb-4 p-3 bg-gray-100 rounded border border-gray-300">
+						<h4 className="m-0 mb-2 text-sm text-gray-700">
 							Query Keys Used:
 						</h4>
-						<div style={{ fontSize: "12px", fontFamily: "monospace" }}>
-							<div style={{ marginBottom: "4px" }}>
+						<div className="text-xs font-mono">
+							<div className="mb-1">
 								<strong>PK:</strong>
-								<code
-									style={{
-										marginLeft: "8px",
-										padding: "2px 4px",
-										backgroundColor: "#fff",
-										border: "1px solid #ccc",
-										borderRadius: "2px",
-									}}
-								>
+								<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
 									{queryResult.queryKeys?.pk}
 								</code>
 							</div>
 							{queryResult.queryKeys?.sk && (
-								<div style={{ marginBottom: "4px" }}>
+								<div className="mb-1">
 									<strong>SK:</strong>
-									<code
-										style={{
-											marginLeft: "8px",
-											padding: "2px 4px",
-											backgroundColor: "#fff",
-											border: "1px solid #ccc",
-											borderRadius: "2px",
-										}}
-									>
+									<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
 										{queryResult.queryKeys.sk}
 									</code>
 								</div>
@@ -614,15 +512,7 @@ function EntityDetail() {
 							{queryResult.queryKeys?.indexName && (
 								<div>
 									<strong>Index:</strong>
-									<code
-										style={{
-											marginLeft: "8px",
-											padding: "2px 4px",
-											backgroundColor: "#fff",
-											border: "1px solid #ccc",
-											borderRadius: "2px",
-										}}
-									>
+									<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
 										{queryResult.queryKeys.indexName}
 									</code>
 								</div>
@@ -636,16 +526,16 @@ function EntityDetail() {
 							{queryResult.data.length > 0 ? (
 								<EntityQueryResultsTable data={queryResult.data} />
 							) : (
-								<p style={{ color: "#666" }}>No items found with these keys</p>
+								<p className="text-gray-600">No items found with these keys</p>
 							)}
 						</>
 					) : (
 						<div>
-							<p style={{ color: "#f44336" }}>
+							<p className="text-red-500">
 								<strong>Error:</strong> {queryResult.error}
 							</p>
 							{queryResult.errorType && (
-								<p style={{ color: "#666", fontSize: "12px" }}>
+								<p className="text-gray-600 text-xs">
 									Type: {queryResult.errorType}
 								</p>
 							)}
@@ -654,5 +544,5 @@ function EntityDetail() {
 				</div>
 			)}
 		</div>
-	);
+	)
 }

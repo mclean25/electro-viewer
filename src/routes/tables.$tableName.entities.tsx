@@ -13,14 +13,14 @@ interface EntitySchema {
 				field: string;
 				composite: string[];
 				template?: string;
-			};
+			}
 			sk?: {
 				field: string;
 				composite: string[];
 				template?: string;
-			};
-		};
-	};
+			}
+		}
+	}
 	attributes: string[];
 }
 
@@ -56,7 +56,7 @@ const getEntitySchemas = createServerFn({
 									[],
 								template: model.prefixes?.[""]?.pk?.prefix || "",
 							},
-						};
+						}
 
 						if (primary.sk) {
 							indexes.primary.sk = {
@@ -66,7 +66,7 @@ const getEntitySchemas = createServerFn({
 									primary.sk.composite ||
 									[],
 								template: model.prefixes?.[""]?.sk?.prefix || "",
-							};
+							}
 						}
 					}
 
@@ -84,7 +84,7 @@ const getEntitySchemas = createServerFn({
 											[],
 										template: "",
 									},
-								};
+								}
 
 								if (idx.sk) {
 									indexes[indexName].sk = {
@@ -94,7 +94,7 @@ const getEntitySchemas = createServerFn({
 											idx.sk?.composite ||
 											[],
 										template: "",
-									};
+									}
 								}
 							}
 						}
@@ -112,7 +112,7 @@ const getEntitySchemas = createServerFn({
 						service: model.service,
 						indexes,
 						attributes,
-					});
+					})
 				}
 			}
 
@@ -134,17 +134,20 @@ const getEntitySchemas = createServerFn({
 	}
 });
 
-export const Route = createFileRoute("/entities")({
+export const Route = createFileRoute("/tables/$tableName/entities")({
 	component: EntitiesViewer,
-	loader: async () => await getEntitySchemas(),
+	loader: async ({ params }) => {
+		const schemas = await getEntitySchemas();
+		return { schemas, tableName: params.tableName };
+	},
 });
 
 function EntitiesViewer() {
-	const schemas = Route.useLoaderData();
+	const { schemas, tableName } = Route.useLoaderData();
 
 	return (
 		<div style={{ padding: "20px", fontFamily: "monospace" }}>
-			<h1>ElectroDB Entity Definitions</h1>
+			<h1>ElectroDB Entity Definitions for {tableName}</h1>
 			{!schemas && <div>Didn't load any schemas...</div>}
 			<p>Total entities: {schemas?.length}</p>
 
@@ -161,8 +164,8 @@ function EntitiesViewer() {
 				>
 					<h2 style={{ color: "#333", marginTop: 0 }}>
 						<Link
-							to="/entity/$entityName"
-							params={{ entityName: schema.name }}
+							to="/tables/$tableName/entity/$entityName"
+							params={{ tableName, entityName: schema.name }}
 							style={{ color: "#333", textDecoration: "none" }}
 							onMouseEnter={(e) =>
 								(e.currentTarget.style.textDecoration = "underline")
@@ -180,8 +183,8 @@ function EntitiesViewer() {
 					<p style={{ color: "#666" }}>Service: {schema.service}</p>
 					<p style={{ fontSize: "12px" }}>
 						<Link
-							to="/entity/$entityName"
-							params={{ entityName: schema.name }}
+							to="/tables/$tableName/entity/$entityName"
+							params={{ tableName, entityName: schema.name }}
 							style={{ color: "#0066cc" }}
 						>
 							→ Query this entity
@@ -264,5 +267,5 @@ function EntitiesViewer() {
 				</div>
 			))}
 		</div>
-	);
+	)
 }
