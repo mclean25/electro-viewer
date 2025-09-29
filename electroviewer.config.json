@@ -1,7 +1,0 @@
-{
-  "entities": "/Users/alex/dev/client-app/packages/domain/dynamo/schema/model/entities.ts",
-  "tableName": "ClientAppTable",
-  "region": "us-east-1",
-  "service": "client-app",
-  "profile": "main"
-}
