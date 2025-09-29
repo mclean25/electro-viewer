@@ -21,7 +21,6 @@ const listTables = createServerFn({
 		return {
 			success: true,
 			tables: result.TableNames || [],
-			currentTable: config.table,
 		};
 	} catch (error: any) {
 		console.error("Error listing tables:", error);
@@ -29,7 +28,6 @@ const listTables = createServerFn({
 			success: false,
 			error: error.message || "Unknown error occurred",
 			tables: [],
-			currentTable: config.table,
 		};
 	}
 });
@@ -52,7 +50,6 @@ function Home() {
 				<div className="bg-gray-100 p-3 rounded text-sm">
 					<div><span className="font-bold">Region:</span> {config.region}</div>
 					<div><span className="font-bold">Profile:</span> {config.profile}</div>
-					<div><span className="font-bold">Current Table:</span> {data.currentTable}</div>
 				</div>
 			</div>
 
@@ -68,16 +65,9 @@ function Home() {
 									key={tableName}
 									to={`/tables/$tableName/entities`}
 									params={{ tableName }}
-									className={`block p-2 mb-1 rounded text-sm hover:opacity-80 transition-opacity ${
-										tableName === data.currentTable
-											? "bg-green-50 border border-green-500"
-											: "bg-white border border-gray-300 hover:bg-gray-50"
-									}`}
+									className="block p-2 mb-1 rounded text-sm hover:opacity-80 transition-opacity bg-white border border-gray-300 hover:bg-gray-50"
 								>
 									{tableName}
-									{tableName === data.currentTable && (
-										<span className="text-green-500 ml-2">← Current (Configured)</span>
-									)}
 								</Link>
 							))}
 						</div>

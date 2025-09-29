@@ -10,8 +10,8 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
 import { config } from "../../electro-viewer-config";
-import { buildElectroDBKey } from "../../utils/electrodb-keys";
-import { EntityQueryResultsTable } from "../../components/EntityQueryResultsTable";
+import { buildElectroDBKey } from "../utils/electrodb-keys";
+import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 
 interface EntitySchema {
 	name: string;
@@ -132,10 +132,11 @@ const queryDynamoDB = createServerFn({
 			sk?: string;
 			indexName?: string;
 			entityName?: string;
+			tableName: string;
 		}) => params,
 	)
 	.handler(async ({ data }) => {
-		const { pk, sk, indexName, entityName } = data;
+		const { pk, sk, indexName, entityName, tableName } = data;
 
 		try {
 			// Use AWS SDK's fromIni credential provider for SSO profiles
@@ -149,7 +150,7 @@ const queryDynamoDB = createServerFn({
 			if (sk) {
 				// Use GetItem for exact match
 				const command = new GetCommand({
-					TableName: config.table,
+					TableName: tableName,
 					Key: {
 						pk,
 						sk,
@@ -165,7 +166,7 @@ const queryDynamoDB = createServerFn({
 			} else {
 				// Use Query for PK-only queries with entity filter
 				const queryParams: any = {
-					TableName: config.table,
+					TableName: tableName,
 					IndexName: indexName,
 					KeyConditionExpression: "pk = :pk",
 					ExpressionAttributeValues: {
@@ -256,6 +257,7 @@ function EntityDetail() {
 					sk,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 					entityName: schema.name,
+					tableName,
 				},
 			})
 
