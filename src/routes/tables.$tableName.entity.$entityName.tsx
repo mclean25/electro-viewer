@@ -9,7 +9,14 @@ import {
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
-import { config } from "../../electro-viewer-config";
+// Load config from current working directory or CLI environment
+const getConfig = async () => {
+	// Use CLI config path if available, otherwise use current working directory
+	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH || 
+		path.resolve(process.cwd(), "electro-viewer-config.ts");
+	const configModule = await import(/* @vite-ignore */ configPath);
+	return configModule.config;
+};
 import { buildElectroDBKey } from "../utils/electrodb-keys";
 import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 
@@ -41,8 +48,12 @@ const getEntitySchema = createServerFn({
 	.validator((entityName: string) => entityName)
 	.handler(async ({ data: entityName }) => {
 		try {
-			// Resolve the service config path relative to the current working directory
-			const serviceConfigPath = path.resolve(process.cwd(), config.serviceConfigPath);
+			// Load config from current working directory
+			const config = await getConfig();
+			
+			// Resolve the service config path relative to the user's project directory
+			const userCwd = process.env.ELECTRO_VIEWER_CWD || process.cwd();
+			const serviceConfigPath = path.resolve(userCwd, config.serviceConfigPath);
 			
 			const serviceModule = await import(/* @vite-ignore */ serviceConfigPath);
 
@@ -139,6 +150,9 @@ const queryDynamoDB = createServerFn({
 		const { pk, sk, indexName, entityName, tableName } = data;
 
 		try {
+			// Load config from current working directory
+			const config = await getConfig();
+			
 			// Use AWS SDK's fromIni credential provider for SSO profiles
 			const client = new DynamoDBClient({
 				region: config.region,

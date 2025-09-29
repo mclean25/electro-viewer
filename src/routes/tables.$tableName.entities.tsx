@@ -1,7 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import * as path from "node:path";
-import { config } from "../../electro-viewer-config";
+// Load config from current working directory or CLI environment
+const getConfig = async () => {
+	// Use CLI config path if available, otherwise use current working directory
+	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH || 
+		path.resolve(process.cwd(), "electro-viewer-config.ts");
+	const configModule = await import(/* @vite-ignore */ configPath);
+	return configModule.config;
+};
 
 interface EntitySchema {
 	name: string;
@@ -28,8 +35,12 @@ const getEntitySchemas = createServerFn({
 	method: "GET",
 }).handler(async () => {
 	try {
-		// Resolve the service config path relative to the current working directory
-		const serviceConfigPath = path.resolve(process.cwd(), config.serviceConfigPath);
+		// Load config from current working directory
+		const config = await getConfig();
+		
+		// Resolve the service config path relative to the user's project directory
+		const userCwd = process.env.ELECTRO_VIEWER_CWD || process.cwd();
+		const serviceConfigPath = path.resolve(userCwd, config.serviceConfigPath);
 		
 		console.log("Loading entity schemas from:", serviceConfigPath);
 

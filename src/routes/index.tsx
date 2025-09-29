@@ -3,13 +3,25 @@ import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
-import { config } from "../../electro-viewer-config";
+import * as path from "node:path";
+
+// Load config from current working directory or CLI environment
+const getConfig = async () => {
+	// Use CLI config path if available, otherwise use current working directory
+	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH || 
+		path.resolve(process.cwd(), "electro-viewer-config.ts");
+	const configModule = await import(/* @vite-ignore */ configPath);
+	return configModule.config;
+};
 
 // Server function to list DynamoDB tables
 const listTables = createServerFn({
 	method: "GET",
 }).handler(async () => {
 	try {
+		// Load config from current working directory
+		const config = await getConfig();
+		
 		const client = new DynamoDBClient({
 			region: config.region,
 			credentials: fromIni({ profile: config.profile }),
@@ -21,6 +33,7 @@ const listTables = createServerFn({
 		return {
 			success: true,
 			tables: result.TableNames || [],
+			config,
 		};
 	} catch (error: any) {
 		console.error("Error listing tables:", error);
@@ -28,6 +41,7 @@ const listTables = createServerFn({
 			success: false,
 			error: error.message || "Unknown error occurred",
 			tables: [],
+			config: null,
 		};
 	}
 });
@@ -48,8 +62,8 @@ function Home() {
 			<div className="mb-8">
 				<h2 className="text-lg mb-2">AWS Configuration</h2>
 				<div className="bg-gray-100 p-3 rounded text-sm">
-					<div><span className="font-bold">Region:</span> {config.region}</div>
-					<div><span className="font-bold">Profile:</span> {config.profile}</div>
+					<div><span className="font-bold">Region:</span> {data.config?.region}</div>
+					<div><span className="font-bold">Profile:</span> {data.config?.profile}</div>
 				</div>
 			</div>
 
