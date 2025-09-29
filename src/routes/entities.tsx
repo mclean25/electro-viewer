@@ -1,5 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import * as path from "node:path";
+import { config } from "../../electro-viewer-config";
 
 interface EntitySchema {
 	name: string;
@@ -26,19 +28,18 @@ const getEntitySchemas = createServerFn({
 	method: "GET",
 }).handler(async () => {
 	try {
-		console.log("Loading entity schemas using local test file...");
-
-		// Try to dynamically import the local test entities module
-		const localEntitiesPath =
-			"/Users/alex/dev/electro-viewer/test/dynamo/service.ts";
+		// Resolve the service config path relative to the current working directory
+		const serviceConfigPath = path.resolve(process.cwd(), config.serviceConfigPath);
+		
+		console.log("Loading entity schemas from:", serviceConfigPath);
 
 		try {
-			// Use dynamic import directly since it's a local file with no dependencies
-			const entitiesModule = await import(localEntitiesPath);
+			// Dynamically import the service config module
+			const serviceModule = await import(/* @vite-ignore */ serviceConfigPath);
 
 			const schemas: EntitySchema[] = [];
 
-			for (const [_name, entity] of Object.entries(entitiesModule)) {
+			for (const [_name, entity] of Object.entries(serviceModule)) {
 				if (entity && typeof entity === "object" && "model" in entity) {
 					const model = (entity as any).model;
 					const indexes: EntitySchema["indexes"] = {};
@@ -117,11 +118,19 @@ const getEntitySchemas = createServerFn({
 
 			console.log(`Total entities found via dynamic import: ${schemas.length}`);
 			return schemas;
-		} catch (error) {
-			console.error("Failed to extract via dynamic import:", error);
+		} catch (importError: any) {
+			console.error("Failed to import service config file:", importError);
+			
+			// Provide helpful error message
+			const errorMessage = importError.code === 'MODULE_NOT_FOUND' 
+				? `Could not find service config file at: ${serviceConfigPath}\n\nPlease update the 'serviceConfigPath' in your electro-viewer-config.ts file to point to your ElectroDB service configuration file.`
+				: `Failed to load service config from: ${serviceConfigPath}\n\nError: ${importError.message}`;
+			
+			throw new Error(errorMessage);
 		}
 	} catch (error) {
 		console.error("Error loading entity schemas:", error);
+		throw error;
 	}
 });
 

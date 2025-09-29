@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/lib-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
+import * as path from "node:path";
 import { config } from "../../electro-viewer-config";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
 import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
@@ -40,11 +41,12 @@ const getEntitySchema = createServerFn({
 	.validator((entityName: string) => entityName)
 	.handler(async ({ data: entityName }) => {
 		try {
-			const localEntitiesPath =
-				"/Users/alex/dev/electro-viewer/test/dynamo/service.ts";
-			const entitiesModule = await import(localEntitiesPath);
+			// Resolve the service config path relative to the current working directory
+			const serviceConfigPath = path.resolve(process.cwd(), config.serviceConfigPath);
+			
+			const serviceModule = await import(/* @vite-ignore */ serviceConfigPath);
 
-			for (const [name, entity] of Object.entries(entitiesModule)) {
+			for (const [name, entity] of Object.entries(serviceModule)) {
 				if (entity && typeof entity === "object" && "model" in entity) {
 					const model = (entity as any).model;
 					if (model.entity === entityName) {
@@ -107,9 +109,15 @@ const getEntitySchema = createServerFn({
 					}
 				}
 			}
-			throw new Error(`Entity ${entityName} not found`);
-		} catch (error) {
+			throw new Error(`Entity '${entityName}' not found in ${serviceConfigPath}`);
+		} catch (error: any) {
 			console.error("Error loading entity schema:", error);
+			
+			// Provide more helpful error messages
+			if (error.code === 'MODULE_NOT_FOUND') {
+				throw new Error(`Could not find service config file at: ${config.serviceConfigPath}\n\nPlease update the 'serviceConfigPath' in your electro-viewer-config.ts file.`);
+			}
+			
 			throw error;
 		}
 	});
