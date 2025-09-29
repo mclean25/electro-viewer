@@ -1,9 +1,12 @@
 {
   "name": "electro-viewer",
   "version": "1.0.0",
-  "description": "",
+  "description": "A browser-based viewer for ElectroDB entities and DynamoDB data",
   "main": "index.js",
   "type": "module",
+  "bin": {
+    "electro-viewer": "./bin/electro-viewer.js"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
