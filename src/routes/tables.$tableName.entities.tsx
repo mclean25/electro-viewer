@@ -50,6 +50,7 @@ const getEntitySchemas = createServerFn({
 			const serviceModule = await loadTypeScriptFile(
 				serviceConfigPath,
 				config.tsconfigPath,
+				config.env,
 			);
 
 			const schemas: EntitySchema[] = [];
