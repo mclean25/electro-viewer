@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import * as path from "node:path";
+import { loadTypeScriptFile } from "../utils/load-typescript";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -45,8 +46,11 @@ const getEntitySchemas = createServerFn({
 		console.log("Loading entity schemas from:", serviceConfigPath);
 
 		try {
-			// Dynamically import the service config module
-			const serviceModule = await import(/* @vite-ignore */ serviceConfigPath);
+			// Dynamically import the service config module with tsx for path alias resolution
+			const serviceModule = await loadTypeScriptFile(
+				serviceConfigPath,
+				config.tsconfigPath,
+			);
 
 			const schemas: EntitySchema[] = [];
 

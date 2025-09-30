@@ -16,6 +16,11 @@ export const config = {
 	// Relative path from your project root
 	// The file should export your ElectroDB entity instances
 	serviceConfigPath: "./test/dynamo/service.ts",
+
+	// Optional: Path to tsconfig.json for resolving TypeScript path aliases
+	// Relative path from your project root
+	// If not specified, will look for tsconfig.json in the project root
+	tsconfigPath: "./tsconfig.json",
 } as const;
 
 export type ElectroViewerConfig = typeof config;

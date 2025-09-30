@@ -27,6 +27,8 @@
     "electrodb": "^3.4.5",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "tsconfig-paths": "^4.2.0",
+    "tsx": "^4.20.6",
     "vite": "^7.1.4"
   },
   "devDependencies": {
