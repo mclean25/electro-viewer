@@ -2,6 +2,12 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import * as path from "node:path";
 import { loadTypeScriptFiles } from "../utils/load-typescript";
+import {
+	useReactTable,
+	getCoreRowModel,
+	createColumnHelper,
+	flexRender,
+} from "@tanstack/react-table";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -15,6 +21,7 @@ interface EntitySchema {
 	name: string;
 	version: string;
 	service: string;
+	sourceFile: string;
 	indexes: {
 		[key: string]: {
 			pk: {
@@ -51,7 +58,10 @@ const getEntitySchemas = createServerFn({
 
 			const schemas: EntitySchema[] = [];
 
-			for (const [_name, entity] of Object.entries(serviceModule)) {
+			for (const [_name, entityData] of Object.entries(serviceModule)) {
+				const entity = entityData.module;
+				const sourceFile = entityData.sourceFile;
+
 				if (entity && typeof entity === "object" && "model" in entity) {
 					const model = (entity as any).model;
 					const indexes: EntitySchema["indexes"] = {};
@@ -122,6 +132,7 @@ const getEntitySchemas = createServerFn({
 						name: model.entity,
 						version: model.version,
 						service: model.service,
+						sourceFile,
 						indexes,
 						attributes,
 					})
@@ -146,6 +157,19 @@ const getEntitySchemas = createServerFn({
 	}
 });
 
+// Helper function to format key patterns for display
+function formatKeyPattern(
+	composite: string[],
+	template: string | undefined,
+	prefix: string,
+): string {
+	if (composite.length === 0) {
+		return template || prefix;
+	}
+	const fields = composite.map((f) => `\${${f}}`).join("#");
+	return template ? `${template}#${fields}` : `${prefix}#${fields}`;
+}
+
 export const Route = createFileRoute("/tables/$tableName/entities")({
 	component: EntitiesViewer,
 	loader: async ({ params }) => {
@@ -157,127 +181,141 @@ export const Route = createFileRoute("/tables/$tableName/entities")({
 function EntitiesViewer() {
 	const { schemas, tableName } = Route.useLoaderData();
 
+	const columnHelper = createColumnHelper<EntitySchema>();
+
+	const columns = [
+		columnHelper.accessor("name", {
+			header: "Entity Name",
+			cell: (info) => (
+				<Link
+					to="/tables/$tableName/entity/$entityName"
+					params={{ tableName, entityName: info.getValue() }}
+					style={{ color: "#0066cc", textDecoration: "none" }}
+				>
+					{info.getValue()}
+				</Link>
+			),
+		}),
+		columnHelper.accessor("service", {
+			header: "Service Name",
+			cell: (info) => info.getValue(),
+		}),
+		columnHelper.accessor("sourceFile", {
+			header: "Source File",
+			cell: (info) => (
+				<span style={{ fontSize: "12px", fontFamily: "monospace" }}>
+					{info.getValue()}
+				</span>
+			),
+		}),
+		columnHelper.display({
+			id: "pkPattern",
+			header: "PK Pattern",
+			cell: (info) => {
+				const schema = info.row.original;
+				const primaryIndex = schema.indexes.primary;
+				if (!primaryIndex) return "N/A";
+				return (
+					<code style={{ fontSize: "11px" }}>
+						{formatKeyPattern(
+							primaryIndex.pk.composite,
+							primaryIndex.pk.template,
+							`$\{${schema.service}}`,
+						)}
+					</code>
+				);
+			},
+		}),
+		columnHelper.display({
+			id: "skPattern",
+			header: "SK Pattern",
+			cell: (info) => {
+				const schema = info.row.original;
+				const primaryIndex = schema.indexes.primary;
+				if (!primaryIndex?.sk) return "N/A";
+				return (
+					<code style={{ fontSize: "11px" }}>
+						{formatKeyPattern(
+							primaryIndex.sk.composite,
+							primaryIndex.sk.template,
+							`$\{${schema.name}}_$\{${schema.version}}`,
+						)}
+					</code>
+				);
+			},
+		}),
+		columnHelper.accessor("attributes", {
+			header: "No. of Fields",
+			cell: (info) => info.getValue().length,
+		}),
+	];
+
+	const table = useReactTable({
+		data: schemas || [],
+		columns,
+		getCoreRowModel: getCoreRowModel(),
+	});
+
 	return (
 		<div style={{ padding: "20px", fontFamily: "monospace" }}>
 			<h1>ElectroDB Entity Definitions for {tableName}</h1>
 			{!schemas && <div>Didn't load any schemas...</div>}
 			<p>Total entities: {schemas?.length}</p>
 
-			{schemas?.map((schema) => (
-				<div
-					key={schema.name}
-					style={{
-						marginBottom: "30px",
-						padding: "15px",
-						border: "1px solid #ccc",
-						borderRadius: "5px",
-						backgroundColor: "#f9f9f9",
-					}}
-				>
-					<h2 style={{ color: "#333", marginTop: 0 }}>
-						<Link
-							to="/tables/$tableName/entity/$entityName"
-							params={{ tableName, entityName: schema.name }}
-							style={{ color: "#333", textDecoration: "none" }}
-							onMouseEnter={(e) =>
-								(e.currentTarget.style.textDecoration = "underline")
-							}
-							onMouseLeave={(e) =>
-								(e.currentTarget.style.textDecoration = "none")
-							}
-						>
-							{schema.name}
-						</Link>{" "}
-						<span style={{ fontSize: "14px", color: "#666" }}>
-							(v{schema.version})
-						</span>
-					</h2>
-					<p style={{ color: "#666" }}>Service: {schema.service}</p>
-					<p style={{ fontSize: "12px" }}>
-						<Link
-							to="/tables/$tableName/entity/$entityName"
-							params={{ tableName, entityName: schema.name }}
-							style={{ color: "#0066cc" }}
-						>
-							→ Query this entity
-						</Link>
-					</p>
-
-					<h3>Indexes:</h3>
-					{Object.entries(schema.indexes).map(([indexName, index]) => (
-						<div
-							key={indexName}
-							style={{
-								marginLeft: "20px",
-								marginBottom: "15px",
-								padding: "10px",
-								backgroundColor: "#fff",
-								border: "1px solid #ddd",
-								borderRadius: "3px",
-							}}
-						>
-							<h4 style={{ margin: "0 0 10px 0", color: "#555" }}>
-								{indexName} {indexName !== "primary" && "(GSI)"}
-							</h4>
-
-							<div style={{ marginLeft: "10px" }}>
-								<div>
-									<strong>PK:</strong>
-									<div style={{ marginLeft: "15px" }}>
-										<div>Field: {index.pk.field}</div>
-										<div>
-											Composite: [{index.pk.composite.join(", ") || "none"}]
-										</div>
-										{index.pk.template && (
-											<div style={{ color: "#0066cc", fontSize: "13px" }}>
-												Pattern: {index.pk.template}
-											</div>
-										)}
-									</div>
-								</div>
-
-								{index.sk && (
-									<div style={{ marginTop: "10px" }}>
-										<strong>SK:</strong>
-										<div style={{ marginLeft: "15px" }}>
-											<div>Field: {index.sk.field}</div>
-											<div>Composite: [{index.sk.composite.join(", ")}]</div>
-											{index.sk.template && (
-												<div style={{ color: "#0066cc", fontSize: "13px" }}>
-													Pattern: {index.sk.template}
-												</div>
-											)}
-										</div>
-									</div>
-								)}
-							</div>
-						</div>
-					))}
-
-					<details style={{ marginTop: "10px" }}>
-						<summary style={{ cursor: "pointer", color: "#666" }}>
-							Attributes ({schema.attributes.length})
-						</summary>
-						<div style={{ marginLeft: "20px", marginTop: "10px" }}>
-							{schema.attributes.map((attr) => (
-								<span
-									key={attr}
+			<table
+				style={{
+					width: "100%",
+					borderCollapse: "collapse",
+					marginTop: "20px",
+					fontSize: "14px",
+				}}
+			>
+				<thead>
+					{table.getHeaderGroups().map((headerGroup) => (
+						<tr key={headerGroup.id}>
+							{headerGroup.headers.map((header) => (
+								<th
+									key={header.id}
 									style={{
-										display: "inline-block",
-										margin: "2px",
-										padding: "3px 8px",
-										backgroundColor: "#e0e0e0",
-										borderRadius: "3px",
-										fontSize: "12px",
+										textAlign: "left",
+										padding: "12px",
+										borderBottom: "2px solid #333",
+										backgroundColor: "#f5f5f5",
+										fontWeight: "bold",
 									}}
 								>
-									{attr}
-								</span>
+									{flexRender(
+										header.column.columnDef.header,
+										header.getContext(),
+									)}
+								</th>
 							))}
-						</div>
-					</details>
-				</div>
-			))}
+						</tr>
+					))}
+				</thead>
+				<tbody>
+					{table.getRowModel().rows.map((row) => (
+						<tr
+							key={row.id}
+							style={{
+								borderBottom: "1px solid #ddd",
+							}}
+						>
+							{row.getVisibleCells().map((cell) => (
+								<td
+									key={cell.id}
+									style={{
+										padding: "12px",
+										verticalAlign: "top",
+									}}
+								>
+									{flexRender(cell.column.columnDef.cell, cell.getContext())}
+								</td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
 		</div>
-	)
+	);
 }

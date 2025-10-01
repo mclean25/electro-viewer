@@ -116,13 +116,13 @@ export async function loadTypeScriptFile(
  * @param patterns - Array of file paths or glob patterns (e.g., ["./entities.ts", "./packages/*\/entities.ts"])
  * @param tsconfigPath - Optional path to tsconfig.json
  * @param configEnv - Optional environment variables to inject
- * @returns Merged exports from all matched files
+ * @returns Merged exports with metadata about source files
  */
 export async function loadTypeScriptFiles(
 	patterns: string[],
 	tsconfigPath?: string,
 	configEnv?: Record<string, string>,
-): Promise<any> {
+): Promise<Record<string, { module: any; sourceFile: string }>> {
 	const projectRoot = process.env.ELECTRO_VIEWER_CWD || process.cwd();
 
 	// Resolve all glob patterns to actual file paths
@@ -140,12 +140,15 @@ export async function loadTypeScriptFiles(
 
 	console.log(`Found ${filePaths.length} entity file(s):`, filePaths);
 
-	// Load all files and merge their exports
-	const mergedExports: any = {};
+	// Load all files and merge their exports with source file metadata
+	const mergedExports: Record<string, { module: any; sourceFile: string }> = {};
 
 	for (const filePath of filePaths) {
 		console.log(`\nLoading entities from: ${filePath}`);
 		const module = await loadTypeScriptFile(filePath, tsconfigPath, configEnv);
+
+		// Make the source file path relative to project root for display
+		const relativeSourceFile = filePath.replace(projectRoot + "/", "");
 
 		// Merge exports from this file into the combined result
 		for (const [key, value] of Object.entries(module)) {
@@ -154,7 +157,10 @@ export async function loadTypeScriptFiles(
 					`Warning: Duplicate export '${key}' found in ${filePath}. Overwriting previous value.`,
 				);
 			}
-			mergedExports[key] = value;
+			mergedExports[key] = {
+				module: value,
+				sourceFile: relativeSourceFile,
+			};
 		}
 	}
 

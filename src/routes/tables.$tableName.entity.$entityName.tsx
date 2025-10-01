@@ -59,7 +59,9 @@ const getEntitySchema = createServerFn({
 				config.env,
 			);
 
-			for (const [name, entity] of Object.entries(serviceModule)) {
+			for (const [name, entityData] of Object.entries(serviceModule)) {
+				const entity = entityData.module;
+
 				if (entity && typeof entity === "object" && "model" in entity) {
 					const model = (entity as any).model;
 					if (model.entity === entityName) {
