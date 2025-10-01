@@ -20,6 +20,7 @@
     "@aws-sdk/client-dynamodb": "^3.879.0",
     "@aws-sdk/credential-providers": "^3.880.0",
     "@aws-sdk/lib-dynamodb": "^3.879.0",
+    "@radix-ui/react-slot": "^1.2.3",
     "@tailwindcss/vite": "^4.1.13",
     "@tanstack/react-router": "^1.131.32",
     "@tanstack/react-start": "^1.131.32",
