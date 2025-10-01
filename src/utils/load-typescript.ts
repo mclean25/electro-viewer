@@ -1,8 +1,8 @@
 /**
- * Loads a TypeScript file with path alias resolution using esbuild
+ * Loads TypeScript files with path alias resolution using esbuild
  *
- * This utility bundles the TypeScript file with all dependencies resolved,
- * then imports the bundle. This ensures path aliases are properly handled.
+ * This utility bundles TypeScript files with all dependencies resolved,
+ * then imports the bundles. This ensures path aliases are properly handled.
  */
 import { build } from "esbuild";
 import { resolve, dirname } from "node:path";
@@ -10,6 +10,7 @@ import { mkdtempSync, rmSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { config as loadDotenv } from "dotenv";
+import fg from "fast-glob";
 
 export async function loadTypeScriptFile(
 	filePath: string,
@@ -107,4 +108,55 @@ export async function loadTypeScriptFile(
 			console.warn("Failed to clean up temp directory:", err);
 		}
 	}
+}
+
+/**
+ * Loads multiple TypeScript files using glob patterns
+ *
+ * @param patterns - Array of file paths or glob patterns (e.g., ["./entities.ts", "./packages/*\/entities.ts"])
+ * @param tsconfigPath - Optional path to tsconfig.json
+ * @param configEnv - Optional environment variables to inject
+ * @returns Merged exports from all matched files
+ */
+export async function loadTypeScriptFiles(
+	patterns: string[],
+	tsconfigPath?: string,
+	configEnv?: Record<string, string>,
+): Promise<any> {
+	const projectRoot = process.env.ELECTRO_VIEWER_CWD || process.cwd();
+
+	// Resolve all glob patterns to actual file paths
+	const filePaths = await fg(patterns, {
+		cwd: projectRoot,
+		absolute: true,
+		onlyFiles: true,
+	});
+
+	if (filePaths.length === 0) {
+		throw new Error(
+			`No files found matching patterns: ${patterns.join(", ")}\nSearched in: ${projectRoot}`,
+		);
+	}
+
+	console.log(`Found ${filePaths.length} entity file(s):`, filePaths);
+
+	// Load all files and merge their exports
+	const mergedExports: any = {};
+
+	for (const filePath of filePaths) {
+		console.log(`\nLoading entities from: ${filePath}`);
+		const module = await loadTypeScriptFile(filePath, tsconfigPath, configEnv);
+
+		// Merge exports from this file into the combined result
+		for (const [key, value] of Object.entries(module)) {
+			if (mergedExports[key]) {
+				console.warn(
+					`Warning: Duplicate export '${key}' found in ${filePath}. Overwriting previous value.`,
+				);
+			}
+			mergedExports[key] = value;
+		}
+	}
+
+	return mergedExports;
 }

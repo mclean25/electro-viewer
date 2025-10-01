@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import * as path from "node:path";
-import { loadTypeScriptFile } from "../utils/load-typescript";
+import { loadTypeScriptFiles } from "../utils/load-typescript";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -38,17 +38,13 @@ const getEntitySchemas = createServerFn({
 	try {
 		// Load config from current working directory
 		const config = await getConfig();
-		
-		// Resolve the service config path relative to the user's project directory
-		const userCwd = process.env.ELECTRO_VIEWER_CWD || process.cwd();
-		const serviceConfigPath = path.resolve(userCwd, config.serviceConfigPath);
-		
-		console.log("Loading entity schemas from:", serviceConfigPath);
+
+		console.log("Loading entity schemas from patterns:", config.entityConfigPaths);
 
 		try {
-			// Dynamically import the service config module with tsx for path alias resolution
-			const serviceModule = await loadTypeScriptFile(
-				serviceConfigPath,
+			// Dynamically import the entity files using glob patterns
+			const serviceModule = await loadTypeScriptFiles(
+				config.entityConfigPaths,
 				config.tsconfigPath,
 				config.env,
 			);
@@ -135,13 +131,13 @@ const getEntitySchemas = createServerFn({
 			console.log(`Total entities found via dynamic import: ${schemas.length}`);
 			return schemas;
 		} catch (importError: any) {
-			console.error("Failed to import service config file:", importError);
-			
+			console.error("Failed to import entity config files:", importError);
+
 			// Provide helpful error message
-			const errorMessage = importError.code === 'MODULE_NOT_FOUND' 
-				? `Could not find service config file at: ${serviceConfigPath}\n\nPlease update the 'serviceConfigPath' in your electro-viewer-config.ts file to point to your ElectroDB service configuration file.`
-				: `Failed to load service config from: ${serviceConfigPath}\n\nError: ${importError.message}`;
-			
+			const errorMessage = importError.code === 'MODULE_NOT_FOUND'
+				? `Could not find entity config files matching: ${config.entityConfigPaths.join(", ")}\n\nPlease update the 'entityConfigPaths' in your electro-viewer-config.ts file to point to your ElectroDB entity files.`
+				: `Failed to load entity config files from: ${config.entityConfigPaths.join(", ")}\n\nError: ${importError.message}`;
+
 			throw new Error(errorMessage);
 		}
 	} catch (error) {

@@ -9,7 +9,7 @@ import {
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
-import { loadTypeScriptFile } from "../utils/load-typescript";
+import { loadTypeScriptFiles } from "../utils/load-typescript";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -51,14 +51,10 @@ const getEntitySchema = createServerFn({
 		try {
 			// Load config from current working directory
 			const config = await getConfig();
-			
-			// Resolve the service config path relative to the user's project directory
-			const userCwd = process.env.ELECTRO_VIEWER_CWD || process.cwd();
-			const serviceConfigPath = path.resolve(userCwd, config.serviceConfigPath);
 
-			// Dynamically import the service config module with tsx for path alias resolution
-			const serviceModule = await loadTypeScriptFile(
-				serviceConfigPath,
+			// Dynamically import the entity files using glob patterns
+			const serviceModule = await loadTypeScriptFiles(
+				config.entityConfigPaths,
 				config.tsconfigPath,
 				config.env,
 			);
@@ -126,14 +122,14 @@ const getEntitySchema = createServerFn({
 					}
 				}
 			}
-			throw new Error(`Entity '${entityName}' not found in ${serviceConfigPath}`);
+			throw new Error(`Entity '${entityName}' not found in entity files matching: ${config.entityConfigPaths.join(", ")}`);
 		} catch (error: any) {
 			console.error("Error loading entity schema:", error);
 
 			// Provide more helpful error messages
 			if (error.code === 'MODULE_NOT_FOUND') {
 				const config = await getConfig();
-				throw new Error(`Could not find service config file at: ${config.serviceConfigPath}\n\nPlease update the 'serviceConfigPath' in your electro-viewer-config.ts file.`);
+				throw new Error(`Could not find entity config files matching: ${config.entityConfigPaths.join(", ")}\n\nPlease update the 'entityConfigPaths' in your electro-viewer-config.ts file.`);
 			}
 
 			throw error;

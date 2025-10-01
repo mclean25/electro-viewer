@@ -35,7 +35,7 @@ if (!existsSync(resolvedConfigPath)) {
   console.error('export const config = {');
   console.error('  profile: "your-aws-profile",');
   console.error('  region: "us-east-1",');
-  console.error('  serviceConfigPath: "./path/to/your/electrodb/service.ts"');
+  console.error('  entityConfigPaths: ["./path/to/your/entities.ts"]');
   console.error('} as const;');
   process.exit(1);
 }
