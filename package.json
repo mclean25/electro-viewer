@@ -14,7 +14,7 @@
     "test:ui": "vitest --ui"
   },
   "keywords": [],
-  "author": "",
+  "author": "Alex McLean",
   "license": "ISC",
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.879.0",
