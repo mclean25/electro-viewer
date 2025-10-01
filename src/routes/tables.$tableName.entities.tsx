@@ -67,27 +67,42 @@ const getEntitySchemas = createServerFn({
 					const indexes: EntitySchema["indexes"] = {};
 
 					// Extract primary index
-					if (model.indexes?.primary) {
-						const primary = model.indexes.primary;
+					// In ElectroDB, the primary index is either named "primary" or is the one without an "index" property
+					let primaryIndex = model.indexes?.primary;
+					let primaryIndexName = "primary";
+
+					// If no "primary" index, find the index without an "index" property (that's the primary)
+					if (!primaryIndex && model.indexes) {
+						for (const [indexName, indexDef] of Object.entries(model.indexes)) {
+							const idx = indexDef as any;
+							if (!idx.index) {
+								primaryIndex = idx;
+								primaryIndexName = indexName;
+								break;
+							}
+						}
+					}
+
+					if (primaryIndex) {
 						indexes.primary = {
 							pk: {
-								field: primary.pk.field || "pk",
+								field: primaryIndex.pk.field || "pk",
 								composite:
-									primary.pk.facets?.map((f: any) => f.name) ||
-									primary.pk.composite ||
+									primaryIndex.pk.facets?.map((f: any) => f.name) ||
+									primaryIndex.pk.composite ||
 									[],
-								template: model.prefixes?.[""]?.pk?.prefix || "",
+								template: model.prefixes?.[primaryIndexName]?.pk?.prefix || model.prefixes?.[""]?.pk?.prefix || "",
 							},
 						}
 
-						if (primary.sk) {
+						if (primaryIndex.sk) {
 							indexes.primary.sk = {
-								field: primary.sk.field || "sk",
+								field: primaryIndex.sk.field || "sk",
 								composite:
-									primary.sk.facets?.map((f: any) => f.name) ||
-									primary.sk.composite ||
+									primaryIndex.sk.facets?.map((f: any) => f.name) ||
+									primaryIndex.sk.composite ||
 									[],
-								template: model.prefixes?.[""]?.sk?.prefix || "",
+								template: model.prefixes?.[primaryIndexName]?.sk?.prefix || model.prefixes?.[""]?.sk?.prefix || "",
 							}
 						}
 					}
