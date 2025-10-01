@@ -4,7 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a TanStack Start application using React Router for full-stack React development with server functions and file-based routing.
+This is a TanStack Start application intended to be installed as an npm dependency into user's projects who
+are using ElectroDB. The goal is to read the user's ElectroDB (dyanamoDB package) entities and give them a helpful
+interface to query them.
 
 ## Commands
 
@@ -53,6 +55,37 @@ export const Route = createFileRoute("/path")({
 - `index.tsx` → `/`
 - `about.tsx` → `/about`
 - `users/[id].tsx` → `/users/:id` (dynamic segments)
+
+### TypeScript Path Alias Resolution
+
+**Problem**: Users' ElectroDB entity files often use TypeScript path aliases (e.g., `@core/*`, `@domain/*`) defined in their project's `tsconfig.json`. These need to be resolved when loading entities.
+
+**Solution**: `/src/utils/load-typescript.ts` uses `esbuild` to bundle user entity files with full path alias resolution.
+
+**How it works**:
+1. Loads `.env` file from user's project root (if exists)
+2. Applies environment variables from config (`config.env`)
+3. Uses `esbuild` to bundle the entities file:
+   - Resolves TypeScript path aliases from user's `tsconfig.json`
+   - Bundles all npm dependencies (date-fns, @aws-sdk/*, etc.)
+   - Keeps Node.js built-ins external
+   - Injects environment variables into the bundle
+   - Outputs CommonJS to handle dynamic requires
+4. Imports the bundled file using `createRequire`
+
+**Dependencies**:
+- `esbuild`: Bundles TypeScript with path alias resolution
+- `dotenv`: Loads `.env` files from user's project
+
+**Configuration options**:
+- `tsconfigPath`: Path to user's tsconfig.json (defaults to `./tsconfig.json`)
+- `env`: Environment variables to set when loading entities (e.g., `{ IS_PERMISSIONED_ENV: "false" }`)
+
+**Important**: This package is installed globally and runs in users' projects. The loader must handle:
+- Monorepo structures with multiple tsconfig files
+- TypeScript path aliases
+- Environment variables needed by entities
+- Various module formats and dependencies
 
 ### Code Style
 - 2 spaces indentation
