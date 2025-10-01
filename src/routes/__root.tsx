@@ -6,6 +6,7 @@ import {
 	HeadContent,
 	Scripts,
 } from "@tanstack/react-router";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import "../index.css";
 
 export const Route = createRootRoute({
@@ -29,6 +30,9 @@ export const Route = createRootRoute({
 function RootComponent() {
 	return (
 		<RootDocument>
+			<div className="fixed right-4 top-4 z-50">
+				<ThemeToggle />
+			</div>
 			<Outlet />
 		</RootDocument>
 	);
