@@ -27,6 +27,7 @@
     "dotenv": "^17.2.3",
     "electrodb": "^3.4.5",
     "esbuild": "^0.25.10",
+    "fast-glob": "^3.3.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "vite": "^7.1.4"
