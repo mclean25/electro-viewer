@@ -10,7 +10,11 @@ files in your project.
 - 🔑 **Key Builder** - Helps construct partition and sort keys using ElectroDB's patterns
 - 📊 **Entity Explorer** - View entity schemas, indexes, and attributes
 - 🔐 **AWS SSO Support** - Works with AWS profiles and SSO authentication
-- 🎨 **TypeScript Path Aliases** - Automatically resolves your project's path aliases (`@core/*`, etc.)
+
+## Roadmap
+
+- [x] Read support
+- [ ] Write support
 
 ## Installation
 
