@@ -8,6 +8,14 @@ import {
 	createColumnHelper,
 	flexRender,
 } from "@tanstack/react-table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -205,7 +213,7 @@ function EntitiesViewer() {
 				<Link
 					to="/tables/$tableName/entity/$entityName"
 					params={{ tableName, entityName: info.getValue() }}
-					style={{ color: "#0066cc", textDecoration: "none" }}
+					className="text-blue-600 hover:text-blue-800 hover:underline"
 				>
 					{info.getValue()}
 				</Link>
@@ -218,7 +226,7 @@ function EntitiesViewer() {
 		columnHelper.accessor("sourceFile", {
 			header: "Source File",
 			cell: (info) => (
-				<span style={{ fontSize: "12px", fontFamily: "monospace" }}>
+				<span className="font-mono text-xs">
 					{info.getValue()}
 				</span>
 			),
@@ -231,7 +239,7 @@ function EntitiesViewer() {
 				const primaryIndex = schema.indexes.primary;
 				if (!primaryIndex) return "N/A";
 				return (
-					<code style={{ fontSize: "11px" }}>
+					<code className="text-xs">
 						{formatKeyPattern(
 							primaryIndex.pk.composite,
 							primaryIndex.pk.template,
@@ -249,7 +257,7 @@ function EntitiesViewer() {
 				const primaryIndex = schema.indexes.primary;
 				if (!primaryIndex?.sk) return "N/A";
 				return (
-					<code style={{ fontSize: "11px" }}>
+					<code className="text-xs">
 						{formatKeyPattern(
 							primaryIndex.sk.composite,
 							primaryIndex.sk.template,
@@ -272,65 +280,44 @@ function EntitiesViewer() {
 	});
 
 	return (
-		<div style={{ padding: "20px", fontFamily: "monospace" }}>
-			<h1>ElectroDB Entity Definitions for {tableName}</h1>
-			{!schemas && <div>Didn't load any schemas...</div>}
-			<p>Total entities: {schemas?.length}</p>
+		<div className="container mx-auto py-8 font-mono">
+			<h1 className="mb-4 text-3xl font-bold">
+				ElectroDB Entity Definitions for {tableName}
+			</h1>
+			{!schemas && <div className="text-muted-foreground">Didn't load any schemas...</div>}
+			<p className="mb-6 text-sm text-muted-foreground">
+				Total entities: {schemas?.length}
+			</p>
 
-			<table
-				style={{
-					width: "100%",
-					borderCollapse: "collapse",
-					marginTop: "20px",
-					fontSize: "14px",
-				}}
-			>
-				<thead>
-					{table.getHeaderGroups().map((headerGroup) => (
-						<tr key={headerGroup.id}>
-							{headerGroup.headers.map((header) => (
-								<th
-									key={header.id}
-									style={{
-										textAlign: "left",
-										padding: "12px",
-										borderBottom: "2px solid #333",
-										backgroundColor: "#f5f5f5",
-										fontWeight: "bold",
-									}}
-								>
-									{flexRender(
-										header.column.columnDef.header,
-										header.getContext(),
-									)}
-								</th>
-							))}
-						</tr>
-					))}
-				</thead>
-				<tbody>
-					{table.getRowModel().rows.map((row) => (
-						<tr
-							key={row.id}
-							style={{
-								borderBottom: "1px solid #ddd",
-							}}
-						>
-							{row.getVisibleCells().map((cell) => (
-								<td
-									key={cell.id}
-									style={{
-										padding: "12px",
-										verticalAlign: "top",
-									}}
-								>
-									{flexRender(cell.column.columnDef.cell, cell.getContext())}
-								</td>
-							))}
-						</tr>
-					))}
-				</tbody>
-			</table>
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
+						{table.getHeaderGroups().map((headerGroup) => (
+							<TableRow key={headerGroup.id}>
+								{headerGroup.headers.map((header) => (
+									<TableHead key={header.id}>
+										{flexRender(
+											header.column.columnDef.header,
+											header.getContext(),
+										)}
+									</TableHead>
+								))}
+							</TableRow>
+						))}
+					</TableHeader>
+					<TableBody>
+						{table.getRowModel().rows.map((row) => (
+							<TableRow key={row.id}>
+								{row.getVisibleCells().map((cell) => (
+									<TableCell key={cell.id}>
+										{flexRender(cell.column.columnDef.cell, cell.getContext())}
+									</TableCell>
+								))}
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
 		</div>
 	);
 }

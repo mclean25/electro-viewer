@@ -56,12 +56,12 @@ function Home() {
 	const data = Route.useLoaderData();
 
 	return (
-		<div className="p-5 font-mono">
-			<h1 className="text-2xl mb-5">Electro Viewer</h1>
-			
+		<div className="container mx-auto py-8 font-mono">
+			<h1 className="mb-5 text-3xl font-bold">Electro Viewer</h1>
+
 			<div className="mb-8">
-				<h2 className="text-lg mb-2">AWS Configuration</h2>
-				<div className="bg-gray-100 p-3 rounded text-sm">
+				<h2 className="mb-2 text-lg font-semibold">AWS Configuration</h2>
+				<div className="rounded bg-muted p-3 text-sm">
 					<div><span className="font-bold">Region:</span> {data.config?.region}</div>
 					<div><span className="font-bold">Profile:</span> {data.config?.profile}</div>
 				</div>
@@ -69,32 +69,32 @@ function Home() {
 
 			{data.success ? (
 				<div className="mb-8">
-					<h2 className="text-lg mb-2">
+					<h2 className="mb-2 text-lg font-semibold">
 						Available DynamoDB Tables ({data.tables.length})
 					</h2>
 					{data.tables.length > 0 ? (
-						<div className="bg-gray-50 p-4 rounded">
+						<div className="space-y-2">
 							{data.tables.map((tableName: string) => (
 								<Link
 									key={tableName}
 									to={`/tables/$tableName/entities`}
 									params={{ tableName }}
-									className="block p-2 mb-1 rounded text-sm hover:opacity-80 transition-opacity bg-white border border-gray-300 hover:bg-gray-50"
+									className="block rounded border border-border bg-card p-3 text-sm transition-colors hover:bg-muted"
 								>
 									{tableName}
 								</Link>
 							))}
 						</div>
 					) : (
-						<p className="text-gray-600">No DynamoDB tables found in this region/profile.</p>
+						<p className="text-muted-foreground">No DynamoDB tables found in this region/profile.</p>
 					)}
 				</div>
 			) : (
 				<div className="mb-8">
-					<h2 className="text-lg mb-2 text-red-500">
+					<h2 className="mb-2 text-lg font-semibold text-red-500">
 						Error Loading Tables
 					</h2>
-					<div className="bg-red-50 p-3 rounded text-red-500">
+					<div className="rounded bg-red-50 p-3 text-red-500">
 						{data.error}
 					</div>
 				</div>

@@ -10,10 +10,12 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
 import { loadTypeScriptFiles } from "../utils/load-typescript";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
-	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH || 
+	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH ||
 		path.resolve(process.cwd(), "electro-viewer-config.ts");
 	const configModule = await import(/* @vite-ignore */ configPath);
 	return configModule.config;
@@ -333,19 +335,19 @@ function EntityDetail() {
 	}
 
 	return (
-		<div className="p-5 font-mono">
+		<div className="container mx-auto py-8 font-mono">
 			<div className="mb-4">
-				<Link 
-					to="/tables/$tableName/entities" 
+				<Link
+					to="/tables/$tableName/entities"
 					params={{ tableName }}
-					className="text-blue-600 hover:text-blue-700 text-sm"
+					className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
 				>
 					← Back to {tableName} Entities
 				</Link>
 			</div>
-			
-			<h1 className="text-2xl mb-2">Entity: {entityName}</h1>
-			<p className="text-gray-600 mb-5">
+
+			<h1 className="mb-2 text-2xl font-bold">Entity: {entityName}</h1>
+			<p className="mb-5 text-muted-foreground">
 				Version: {schema.version} | Service: {schema.service} | Table: {tableName}
 			</p>
 
@@ -376,7 +378,7 @@ function EntityDetail() {
 					<h4 className="font-semibold mb-2">Partition Key ({currentIndex.pk.field})</h4>
 					{currentIndex.pk.composite.length === 0 ? (
 						<div>
-							<p className="text-gray-600 text-xs mb-2">
+							<p className="mb-2 text-xs text-muted-foreground">
 								No composite attributes (static key)
 							</p>
 							<div className="mb-2">
@@ -404,14 +406,14 @@ function EntityDetail() {
 									<label className="block mb-1 text-sm">
 										{field}:
 									</label>
-									<input
+									<Input
 										type="text"
 										value={pkValues[field] || ""}
 										onChange={(e) =>
 											setPkValues({ ...pkValues, [field]: e.target.value })
 										}
-										placeholder={"Enter ${field}"}
-										className="p-2 w-80 border border-gray-300 rounded"
+										placeholder={`Enter ${field}`}
+										className="w-80"
 									/>
 								</div>
 							))}
@@ -442,7 +444,7 @@ function EntityDetail() {
 						<h4 className="font-semibold mb-2">Sort Key ({currentIndex.sk.field})</h4>
 						{currentIndex.sk.composite.length === 0 ? (
 							<div>
-								<p className="text-gray-600 text-xs mb-2">
+								<p className="mb-2 text-xs text-muted-foreground">
 									No composite attributes
 								</p>
 								<div className="mb-2">
@@ -470,14 +472,14 @@ function EntityDetail() {
 										<label className="block mb-1 text-sm">
 											{field}:
 										</label>
-										<input
+										<Input
 											type="text"
 											value={skValues[field] || ""}
 											onChange={(e) =>
 												setSkValues({ ...skValues, [field]: e.target.value })
 											}
-											placeholder={"Enter ${field}"}
-											className="p-2 w-80 border border-gray-300 rounded"
+											placeholder={`Enter ${field}`}
+											className="w-80"
 										/>
 									</div>
 								))}
@@ -504,17 +506,12 @@ function EntityDetail() {
 					</div>
 				)}
 
-				<button
+				<Button
 					onClick={handleQuery}
 					disabled={isQuerying}
-					className={`px-5 py-2 text-white border-none rounded cursor-pointer text-sm ${
-						isQuerying 
-							? "bg-gray-400 cursor-not-allowed" 
-							: "bg-blue-600 hover:bg-blue-700"
-					}`}
 				>
 					{isQuerying ? "Querying..." : "Query DynamoDB"}
-				</button>
+				</Button>
 			</div>
 
 			{queryResult && (
@@ -526,8 +523,8 @@ function EntityDetail() {
 					<h3 className="text-lg mb-3">Query Result</h3>
 
 					{/* Show the actual query keys used */}
-					<div className="mb-4 p-3 bg-gray-100 rounded border border-gray-300">
-						<h4 className="m-0 mb-2 text-sm text-gray-700">
+					<div className="mb-4 rounded border border-border bg-muted p-3">
+						<h4 className="m-0 mb-2 text-sm font-semibold">
 							Query Keys Used:
 						</h4>
 						<div className="text-xs font-mono">
@@ -562,7 +559,7 @@ function EntityDetail() {
 							{queryResult.data.length > 0 ? (
 								<EntityQueryResultsTable data={queryResult.data} />
 							) : (
-								<p className="text-gray-600">No items found with these keys</p>
+								<p className="text-muted-foreground">No items found with these keys</p>
 							)}
 						</>
 					) : (
@@ -571,7 +568,7 @@ function EntityDetail() {
 								<strong>Error:</strong> {queryResult.error}
 							</p>
 							{queryResult.errorType && (
-								<p className="text-gray-600 text-xs">
+								<p className="text-xs text-muted-foreground">
 									Type: {queryResult.errorType}
 								</p>
 							)}

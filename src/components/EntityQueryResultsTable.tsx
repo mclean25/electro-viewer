@@ -10,6 +10,16 @@ import {
 	type SortingState,
 	type ColumnFiltersState,
 } from "@tanstack/react-table";
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 interface EntityQueryResultsTableProps {
 	data: Record<string, any>[];
@@ -42,27 +52,17 @@ export function EntityQueryResultsTable({
 				cell: (info) => {
 					const value = info.getValue();
 					if (value === null || value === undefined) {
-						return <span style={{ color: "#999" }}>null</span>;
+						return <span className="text-muted-foreground">null</span>;
 					}
 					if (typeof value === "object") {
 						return (
-							<pre
-								style={{
-									margin: 0,
-									fontSize: "11px",
-									maxWidth: "300px",
-									overflow: "auto",
-									backgroundColor: "#f5f5f5",
-									padding: "4px",
-									borderRadius: "2px",
-								}}
-							>
+							<pre className="m-0 max-w-xs overflow-auto rounded bg-muted p-1 text-xs">
 								{JSON.stringify(value, null, 2)}
 							</pre>
 						);
 					}
 					return (
-						<span style={{ fontSize: "12px", fontFamily: "monospace" }}>
+						<span className="font-mono text-xs">
 							{String(value)}
 						</span>
 					);
@@ -92,66 +92,30 @@ export function EntityQueryResultsTable({
 	});
 
 	if (!data?.length) {
-		return <p style={{ color: "#666" }}>No data to display</p>;
+		return <p className="text-muted-foreground">No data to display</p>;
 	}
 
 	return (
-		<>
-			<div style={{ marginBottom: "10px" }}>
-				<input
-					type="text"
-					placeholder="Filter all columns..."
-					onChange={(e) => {
-						table.setGlobalFilter(e.target.value);
-					}}
-					style={{
-						padding: "8px",
-						width: "300px",
-						border: "1px solid #ccc",
-						borderRadius: "4px",
-					}}
-				/>
-			</div>
-			<div
-				style={{
-					maxHeight: "600px",
-					overflow: "auto",
-					border: "1px solid #ddd",
-					borderRadius: "4px",
-				}}
-			>
-				<table
-					style={{
-						width: "100%",
-						borderCollapse: "collapse",
-						fontSize: "12px",
-					}}
-				>
-					<thead style={{ position: "sticky", top: 0, zIndex: 1 }}>
+		<div className="space-y-4">
+			<Input
+				placeholder="Filter all columns..."
+				onChange={(e) => table.setGlobalFilter(e.target.value)}
+				className="max-w-sm"
+			/>
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
-							<tr key={headerGroup.id} style={{ backgroundColor: "#f5f5f5" }}>
+							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
-									<th
+									<TableHead
 										key={header.id}
-										style={{
-											padding: "8px",
-											border: "1px solid #ddd",
-											textAlign: "left",
-											cursor: header.column.getCanSort()
-												? "pointer"
-												: "default",
-											userSelect: "none",
-											backgroundColor: "#f5f5f5",
-										}}
 										onClick={header.column.getToggleSortingHandler()}
+										className={
+											header.column.getCanSort() ? "cursor-pointer select-none" : ""
+										}
 									>
-										<div
-											style={{
-												display: "flex",
-												alignItems: "center",
-												gap: "4px",
-											}}
-										>
+										<div className="flex items-center gap-1">
 											{flexRender(
 												header.column.columnDef.header,
 												header.getContext(),
@@ -161,114 +125,80 @@ export function EntityQueryResultsTable({
 												desc: " ↓",
 											}[header.column.getIsSorted() as string] ?? ""}
 										</div>
-									</th>
+									</TableHead>
 								))}
-							</tr>
+							</TableRow>
 						))}
-					</thead>
-					<tbody>
+					</TableHeader>
+					<TableBody>
 						{table.getRowModel().rows.map((row) => (
-							<tr
-								key={row.id}
-								style={{
-									backgroundColor: row.index % 2 === 0 ? "#fff" : "#fafafa",
-								}}
-							>
+							<TableRow key={row.id}>
 								{row.getVisibleCells().map((cell) => (
-									<td
-										key={cell.id}
-										style={{
-											padding: "8px",
-											border: "1px solid #ddd",
-											verticalAlign: "top",
-										}}
-									>
+									<TableCell key={cell.id}>
 										{flexRender(cell.column.columnDef.cell, cell.getContext())}
-									</td>
+									</TableCell>
 								))}
-							</tr>
+							</TableRow>
 						))}
-					</tbody>
-				</table>
+					</TableBody>
+				</Table>
 			</div>
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "10px",
-					marginTop: "10px",
-					fontSize: "14px",
-				}}
-			>
-				<button
-					onClick={() => table.setPageIndex(0)}
-					disabled={!table.getCanPreviousPage()}
-					style={{
-						padding: "4px 8px",
-						cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed",
-						opacity: table.getCanPreviousPage() ? 1 : 0.5,
-					}}
-				>
-					{"<<"}
-				</button>
-				<button
-					onClick={() => table.previousPage()}
-					disabled={!table.getCanPreviousPage()}
-					style={{
-						padding: "4px 8px",
-						cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed",
-						opacity: table.getCanPreviousPage() ? 1 : 0.5,
-					}}
-				>
-					{"<"}
-				</button>
-				<button
-					onClick={() => table.nextPage()}
-					disabled={!table.getCanNextPage()}
-					style={{
-						padding: "4px 8px",
-						cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
-						opacity: table.getCanNextPage() ? 1 : 0.5,
-					}}
-				>
-					{">"}
-				</button>
-				<button
-					onClick={() => table.setPageIndex(table.getPageCount() - 1)}
-					disabled={!table.getCanNextPage()}
-					style={{
-						padding: "4px 8px",
-						cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
-						opacity: table.getCanNextPage() ? 1 : 0.5,
-					}}
-				>
-					{">>"}
-				</button>
-				<span>
-					Page {table.getState().pagination.pageIndex + 1} of{" "}
-					{table.getPageCount()}
-				</span>
-				<select
-					value={table.getState().pagination.pageSize}
-					onChange={(e) => {
-						table.setPageSize(Number(e.target.value));
-					}}
-					style={{
-						padding: "4px",
-						border: "1px solid #ccc",
-						borderRadius: "4px",
-					}}
-				>
-					{[10, 20, 30, 50, 100].map((pageSize) => (
-						<option key={pageSize} value={pageSize}>
-							Show {pageSize}
-						</option>
-					))}
-				</select>
-				<span style={{ marginLeft: "auto", color: "#666" }}>
+			<div className="flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.setPageIndex(0)}
+						disabled={!table.getCanPreviousPage()}
+					>
+						{"<<"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.previousPage()}
+						disabled={!table.getCanPreviousPage()}
+					>
+						{"<"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.nextPage()}
+						disabled={!table.getCanNextPage()}
+					>
+						{">"}
+					</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.setPageIndex(table.getPageCount() - 1)}
+						disabled={!table.getCanNextPage()}
+					>
+						{">>"}
+					</Button>
+					<span className="text-sm">
+						Page {table.getState().pagination.pageIndex + 1} of{" "}
+						{table.getPageCount()}
+					</span>
+					<select
+						value={table.getState().pagination.pageSize}
+						onChange={(e) => {
+							table.setPageSize(Number(e.target.value));
+						}}
+						className="h-8 rounded-md border px-2"
+					>
+						{[10, 20, 30, 50, 100].map((pageSize) => (
+							<option key={pageSize} value={pageSize}>
+								Show {pageSize}
+							</option>
+						))}
+					</select>
+				</div>
+				<span className="text-sm text-muted-foreground">
 					Showing {table.getRowModel().rows.length} of {data.length} rows
 				</span>
 			</div>
-		</>
+		</div>
 	);
 }
