@@ -2,11 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import * as path from "node:path";
 import { loadTypeScriptFiles } from "../utils/load-typescript";
+import { useState } from "react";
 import {
 	useReactTable,
 	getCoreRowModel,
+	getSortedRowModel,
 	createColumnHelper,
 	flexRender,
+	type SortingState,
 } from "@tanstack/react-table";
 import {
 	Table,
@@ -203,12 +206,14 @@ export const Route = createFileRoute("/tables/$tableName/entities")({
 
 function EntitiesViewer() {
 	const { schemas, tableName } = Route.useLoaderData();
+	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
 
 	const columnHelper = createColumnHelper<EntitySchema>();
 
 	const columns = [
 		columnHelper.accessor("name", {
 			header: "Entity Name",
+			enableSorting: true,
 			cell: (info) => (
 				<Link
 					to="/tables/$tableName/entity/$entityName"
@@ -221,12 +226,14 @@ function EntitiesViewer() {
 		}),
 		columnHelper.accessor("service", {
 			header: "Service Name",
+			enableSorting: true,
 			cell: (info) => info.getValue(),
 		}),
 		columnHelper.accessor("sourceFile", {
 			header: "Source File",
+			enableSorting: true,
 			cell: (info) => (
-				<span className="font-mono text-xs">
+				<span className="font-mono">
 					{info.getValue()}
 				</span>
 			),
@@ -234,12 +241,13 @@ function EntitiesViewer() {
 		columnHelper.display({
 			id: "pkPattern",
 			header: "PK Pattern",
+			enableSorting: false,
 			cell: (info) => {
 				const schema = info.row.original;
 				const primaryIndex = schema.indexes.primary;
 				if (!primaryIndex) return "N/A";
 				return (
-					<code className="text-xs">
+					<code>
 						{formatKeyPattern(
 							primaryIndex.pk.composite,
 							primaryIndex.pk.template,
@@ -252,12 +260,13 @@ function EntitiesViewer() {
 		columnHelper.display({
 			id: "skPattern",
 			header: "SK Pattern",
+			enableSorting: false,
 			cell: (info) => {
 				const schema = info.row.original;
 				const primaryIndex = schema.indexes.primary;
 				if (!primaryIndex?.sk) return "N/A";
 				return (
-					<code className="text-xs">
+					<code>
 						{formatKeyPattern(
 							primaryIndex.sk.composite,
 							primaryIndex.sk.template,
@@ -269,6 +278,7 @@ function EntitiesViewer() {
 		}),
 		columnHelper.accessor("attributes", {
 			header: "No. of Fields",
+			enableSorting: true,
 			cell: (info) => info.getValue().length,
 		}),
 	];
@@ -276,12 +286,17 @@ function EntitiesViewer() {
 	const table = useReactTable({
 		data: schemas || [],
 		columns,
+		state: {
+			sorting,
+		},
+		onSortingChange: setSorting,
 		getCoreRowModel: getCoreRowModel(),
+		getSortedRowModel: getSortedRowModel(),
 	});
 
 	return (
 		<div className="container mx-auto py-8 font-mono">
-			<h1 className="mb-4 text-3xl font-bold">
+			<h1 className="mb-4 text-xl font-bold">
 				ElectroDB Entity Definitions for {tableName}
 			</h1>
 			{!schemas && <div className="text-muted-foreground">Didn't load any schemas...</div>}
@@ -295,11 +310,29 @@ function EntitiesViewer() {
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
-									<TableHead key={header.id}>
-										{flexRender(
-											header.column.columnDef.header,
-											header.getContext(),
-										)}
+									<TableHead
+										key={header.id}
+										onClick={header.column.getToggleSortingHandler()}
+										className={
+											header.column.getCanSort()
+												? "cursor-pointer select-none hover:bg-muted/50"
+												: ""
+										}
+									>
+										<div className="flex items-center gap-2">
+											{flexRender(
+												header.column.columnDef.header,
+												header.getContext(),
+											)}
+											{header.column.getCanSort() && (
+												<span className="text-muted-foreground">
+													{{
+														asc: "↑",
+														desc: "↓",
+													}[header.column.getIsSorted() as string] ?? "⇅"}
+												</span>
+											)}
+										</div>
 									</TableHead>
 								))}
 							</TableRow>

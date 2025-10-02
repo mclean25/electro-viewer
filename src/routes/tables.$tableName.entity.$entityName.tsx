@@ -27,6 +27,7 @@ interface EntitySchema {
 	name: string;
 	version: string;
 	service: string;
+	sourceFile: string;
 	indexes: {
 		[key: string]: {
 			pk: {
@@ -135,6 +136,7 @@ const getEntitySchema = createServerFn({
 							name: model.entity,
 							version: model.version,
 							service: model.service,
+							sourceFile: entityData.sourceFile,
 							indexes,
 							attributes,
 						} as EntitySchema
@@ -346,13 +348,16 @@ function EntityDetail() {
 				</Link>
 			</div>
 
-			<h1 className="mb-2 text-2xl font-bold">Entity: {entityName}</h1>
-			<p className="mb-5 text-muted-foreground">
+			<h1 className="mb-2 text-xl font-bold">Entity: {entityName}</h1>
+			<p className="mb-2 text-muted-foreground">
 				Version: {schema.version} | Service: {schema.service} | Table: {tableName}
+			</p>
+			<p className="mb-5 text-sm text-muted-foreground">
+				Source: <code className="rounded bg-muted px-1 py-0.5">{schema.sourceFile}</code>
 			</p>
 
 			<div className="mb-5">
-				<h3 className="text-lg mb-2">Select Index:</h3>
+				<h3 className="text-base font-semibold mb-2">Select Index:</h3>
 				<select
 					value={selectedIndex}
 					onChange={(e) => {
@@ -361,7 +366,7 @@ function EntityDetail() {
 						setSkValues({})
 						setQueryResult(null);
 					}}
-					className="p-2 text-sm border border-gray-300 rounded"
+					className="rounded border bg-background p-2 text-sm"
 				>
 					{Object.keys(schema.indexes).map((indexName) => (
 						<option key={indexName} value={indexName}>
@@ -371,25 +376,25 @@ function EntityDetail() {
 				</select>
 			</div>
 
-			<div className="mb-5 p-4 bg-gray-50 rounded">
-				<h3 className="text-lg mb-3">Build Query Keys</h3>
+			<div className="mb-5 rounded border bg-muted/50 p-4">
+				<h3 className="text-base font-bold mb-4">Build Query Keys</h3>
 
 				<div className="mb-4">
-					<h4 className="font-semibold mb-2">Partition Key ({currentIndex.pk.field})</h4>
+					<h4 className="text-sm font-semibold mb-3">Partition Key ({currentIndex.pk.field})</h4>
 					{currentIndex.pk.composite.length === 0 ? (
 						<div>
 							<p className="mb-2 text-xs text-muted-foreground">
 								No composite attributes (static key)
 							</p>
 							<div className="mb-2">
-								<strong>Key Pattern:</strong>{" "}
-								<code className="bg-white p-1 border border-gray-300 rounded text-xs">
+								<span className="text-xs font-medium">Key Pattern:</span>{" "}
+								<code className="rounded border bg-card p-1 text-xs">
 									${"{service}"}
 								</code>
 							</div>
 							<div>
-								<strong>Constructed Key:</strong>{" "}
-								<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
+								<span className="text-xs font-medium">Constructed Key:</span>{" "}
+								<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
 									{buildElectroDBKey(
 										true,
 										currentIndex.pk.composite,
@@ -403,7 +408,7 @@ function EntityDetail() {
 						<>
 							{currentIndex.pk.composite.map((field) => (
 								<div key={field} className="mb-2">
-									<label className="block mb-1 text-sm">
+									<label className="block mb-1 text-xs font-medium">
 										{field}:
 									</label>
 									<Input
@@ -417,16 +422,16 @@ function EntityDetail() {
 									/>
 								</div>
 							))}
-							<div className="mb-2">
-								<strong>Key Pattern:</strong>{" "}
-								<code className="bg-white p-1 border border-gray-300 rounded text-xs">
+							<div className="mb-2 mt-3">
+								<span className="text-xs font-medium">Key Pattern:</span>{" "}
+								<code className="rounded border bg-card p-1 text-xs">
 									${"{service}"}#
 									{currentIndex.pk.composite.map((c) => `{${c}}`).join("#")}
 								</code>
 							</div>
 							<div>
-								<strong>Constructed Key:</strong>{" "}
-								<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
+								<span className="text-xs font-medium">Constructed Key:</span>{" "}
+								<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
 									{buildElectroDBKey(
 										true,
 										currentIndex.pk.composite,
@@ -441,21 +446,21 @@ function EntityDetail() {
 
 				{currentIndex.sk && (
 					<div className="mb-4">
-						<h4 className="font-semibold mb-2">Sort Key ({currentIndex.sk.field})</h4>
+						<h4 className="text-sm font-semibold mb-3">Sort Key ({currentIndex.sk.field})</h4>
 						{currentIndex.sk.composite.length === 0 ? (
 							<div>
 								<p className="mb-2 text-xs text-muted-foreground">
 									No composite attributes
 								</p>
 								<div className="mb-2">
-									<strong>Key Pattern:</strong>{" "}
-									<code className="bg-white p-1 border border-gray-300 rounded text-xs">
+									<span className="text-xs font-medium">Key Pattern:</span>{" "}
+									<code className="rounded border bg-card p-1 text-xs">
 										${"{entity}"}_{"{version}"}
 									</code>
 								</div>
 								<div>
-									<strong>Constructed Key:</strong>{" "}
-									<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
+									<span className="text-xs font-medium">Constructed Key:</span>{" "}
+									<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
 										{buildElectroDBKey(
 											false,
 											currentIndex.sk.composite,
@@ -469,7 +474,7 @@ function EntityDetail() {
 							<>
 								{currentIndex.sk.composite.map((field) => (
 									<div key={field} className="mb-2">
-										<label className="block mb-1 text-sm">
+										<label className="block mb-1 text-xs font-medium">
 											{field}:
 										</label>
 										<Input
@@ -483,16 +488,16 @@ function EntityDetail() {
 										/>
 									</div>
 								))}
-								<div className="mb-2">
-									<strong>Key Pattern:</strong>{" "}
-									<code className="bg-white p-1 border border-gray-300 rounded text-xs">
+								<div className="mb-2 mt-3">
+									<span className="text-xs font-medium">Key Pattern:</span>{" "}
+									<code className="rounded border bg-card p-1 text-xs">
 										${"{entity}"}_{"{version}"}#
 										{currentIndex.sk.composite.map((c) => `{${c}}`).join("#")}
 									</code>
 								</div>
 								<div>
-									<strong>Constructed Key:</strong>{" "}
-									<code className="bg-green-100 p-1 border border-green-500 text-green-800 font-semibold text-xs">
+									<span className="text-xs font-medium">Constructed Key:</span>{" "}
+									<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
 										{buildElectroDBKey(
 											false,
 											currentIndex.sk.composite,
@@ -515,29 +520,25 @@ function EntityDetail() {
 			</div>
 
 			{queryResult && (
-				<div className={`mt-5 p-4 border rounded ${
-					queryResult.success 
-						? "bg-green-50 border-green-500" 
-						: "bg-red-50 border-red-500"
-				}`}>
-					<h3 className="text-lg mb-3">Query Result</h3>
+				<div className="mt-5 rounded border p-4">
+					<h3 className="text-base font-semibold mb-3">Query Result</h3>
 
 					{/* Show the actual query keys used */}
 					<div className="mb-4 rounded border border-border bg-muted p-3">
 						<h4 className="m-0 mb-2 text-sm font-semibold">
 							Query Keys Used:
 						</h4>
-						<div className="text-xs font-mono">
+						<div className="font-mono text-xs">
 							<div className="mb-1">
 								<strong>PK:</strong>
-								<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
+								<code className="ml-2 rounded border bg-card p-1 text-xs">
 									{queryResult.queryKeys?.pk}
 								</code>
 							</div>
 							{queryResult.queryKeys?.sk && (
 								<div className="mb-1">
 									<strong>SK:</strong>
-									<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
+									<code className="ml-2 rounded border bg-card p-1 text-xs">
 										{queryResult.queryKeys.sk}
 									</code>
 								</div>
@@ -545,7 +546,7 @@ function EntityDetail() {
 							{queryResult.queryKeys?.indexName && (
 								<div>
 									<strong>Index:</strong>
-									<code className="ml-2 p-1 bg-white border border-gray-300 rounded text-xs">
+									<code className="ml-2 rounded border bg-card p-1 text-xs">
 										{queryResult.queryKeys.indexName}
 									</code>
 								</div>

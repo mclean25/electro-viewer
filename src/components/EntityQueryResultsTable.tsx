@@ -49,6 +49,7 @@ export function EntityQueryResultsTable({
 		return columnsToDisplay.map((key) =>
 			columnHelper.accessor(key, {
 				header: key,
+				enableSorting: true,
 				cell: (info) => {
 					const value = info.getValue();
 					if (value === null || value === undefined) {
@@ -112,18 +113,22 @@ export function EntityQueryResultsTable({
 										key={header.id}
 										onClick={header.column.getToggleSortingHandler()}
 										className={
-											header.column.getCanSort() ? "cursor-pointer select-none" : ""
+											header.column.getCanSort()
+												? "cursor-pointer select-none hover:bg-muted/50"
+												: ""
 										}
 									>
-										<div className="flex items-center gap-1">
+										<div className="flex items-center gap-2">
 											{flexRender(
 												header.column.columnDef.header,
 												header.getContext(),
 											)}
-											{{
-												asc: " ↑",
-												desc: " ↓",
-											}[header.column.getIsSorted() as string] ?? ""}
+											<span className="text-muted-foreground">
+												{{
+													asc: "↑",
+													desc: "↓",
+												}[header.column.getIsSorted() as string] ?? "⇅"}
+											</span>
 										</div>
 									</TableHead>
 								))}

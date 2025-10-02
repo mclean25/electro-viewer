@@ -57,10 +57,10 @@ function Home() {
 
 	return (
 		<div className="container mx-auto py-8 font-mono">
-			<h1 className="mb-5 text-3xl font-bold">Electro Viewer</h1>
+			<h1 className="mb-5 text-xl font-bold">Electro Viewer</h1>
 
 			<div className="mb-8">
-				<h2 className="mb-2 text-lg font-semibold">AWS Configuration</h2>
+				<h2 className="mb-2 text-base font-semibold">AWS Configuration</h2>
 				<div className="rounded bg-muted p-3 text-sm">
 					<div><span className="font-bold">Region:</span> {data.config?.region}</div>
 					<div><span className="font-bold">Profile:</span> {data.config?.profile}</div>
@@ -69,7 +69,7 @@ function Home() {
 
 			{data.success ? (
 				<div className="mb-8">
-					<h2 className="mb-2 text-lg font-semibold">
+					<h2 className="mb-2 text-base font-semibold">
 						Available DynamoDB Tables ({data.tables.length})
 					</h2>
 					{data.tables.length > 0 ? (
@@ -91,10 +91,10 @@ function Home() {
 				</div>
 			) : (
 				<div className="mb-8">
-					<h2 className="mb-2 text-lg font-semibold text-red-500">
+					<h2 className="mb-2 text-base font-semibold text-red-500 dark:text-red-400">
 						Error Loading Tables
 					</h2>
-					<div className="rounded bg-red-50 p-3 text-red-500">
+					<div className="rounded border border-red-500 bg-red-500/10 p-3 text-red-600 dark:border-red-400 dark:bg-red-400/10 dark:text-red-400">
 						{data.error}
 					</div>
 				</div>

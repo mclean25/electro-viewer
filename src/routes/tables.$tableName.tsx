@@ -15,7 +15,7 @@ function TableLayout() {
 				</Link>
 			</div>
 
-			<h1 className="mb-2 text-2xl font-bold">Table: {tableName}</h1>
+			<h1 className="mb-2 text-xl font-bold">Table: {tableName}</h1>
 
 			<Outlet />
 		</div>
