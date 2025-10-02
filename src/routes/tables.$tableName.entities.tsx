@@ -295,7 +295,7 @@ function EntitiesViewer() {
 	});
 
 	return (
-		<div className="container mx-auto py-8 font-mono">
+		<div>
 			<h1 className="mb-4 text-xl font-bold">
 				ElectroDB Entity Definitions for {tableName}
 			</h1>

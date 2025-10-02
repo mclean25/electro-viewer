@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -337,17 +337,7 @@ function EntityDetail() {
 	}
 
 	return (
-		<div className="container mx-auto py-8 font-mono">
-			<div className="mb-4">
-				<Link
-					to="/tables/$tableName/entities"
-					params={{ tableName }}
-					className="text-sm text-blue-600 hover:text-blue-800 hover:underline"
-				>
-					← Back to {tableName} Entities
-				</Link>
-			</div>
-
+		<div>
 			<h1 className="mb-2 text-xl font-bold">Entity: {entityName}</h1>
 			<p className="mb-2 text-muted-foreground">
 				Version: {schema.version} | Service: {schema.service} | Table: {tableName}
