@@ -9,7 +9,7 @@ import {
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
-import { getEntitySchemaByName } from "../utils/load-schema-cache";
+import { loadSchemaCache } from "../utils/load-schema-cache";
 import type { EntitySchema } from "../utils/build-schema-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,25 +19,25 @@ import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
-	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH ||
+	const configPath =
+		process.env.ELECTRO_VIEWER_CONFIG_PATH ||
 		path.resolve(process.cwd(), "electro-viewer-config.ts");
 	const configModule = await import(/* @vite-ignore */ configPath);
 	return configModule.config;
 };
 
-// Server function to get entity schema by name
 const getEntitySchema = createServerFn({
 	method: "GET",
 })
 	.validator((entityName: string) => entityName)
 	.handler(async ({ data: entityName }) => {
-		// Load from pre-built schema cache (fast!)
-		const schema = getEntitySchemaByName(entityName);
+		const cache = loadSchemaCache();
+		const schema = cache.entities.find((e) => e.name === entityName);
 		if (!schema) {
 			throw new Error(`Entity '${entityName}' not found in schema cache`);
 		}
 		return schema;
-	})
+	});
 
 // Server function to query DynamoDB
 const queryDynamoDB = createServerFn({
@@ -58,12 +58,12 @@ const queryDynamoDB = createServerFn({
 		try {
 			// Load config from current working directory
 			const config = await getConfig();
-			
+
 			// Use AWS SDK's fromIni credential provider for SSO profiles
 			const client = new DynamoDBClient({
 				region: config.region,
 				credentials: fromIni({ profile: config.profile }),
-			})
+			});
 
 			const docClient = DynamoDBDocumentClient.from(client);
 
@@ -75,14 +75,14 @@ const queryDynamoDB = createServerFn({
 						pk,
 						sk,
 					},
-				})
+				});
 
 				const result = await docClient.send(command);
 				return {
 					success: true,
 					data: result.Item ? [result.Item] : [],
 					count: result.Item ? 1 : 0,
-				}
+				};
 			} else {
 				// Use Query for PK-only queries with entity filter
 				const queryParams: any = {
@@ -92,7 +92,7 @@ const queryDynamoDB = createServerFn({
 					ExpressionAttributeValues: {
 						":pk": pk,
 					},
-				}
+				};
 
 				// Add entity filter when entityName is provided
 				// This is to filter for relevant results when the PK contains other items
@@ -109,7 +109,7 @@ const queryDynamoDB = createServerFn({
 					success: true,
 					data: result.Items || [],
 					count: result.Count || 0,
-				}
+				};
 			}
 		} catch (error: any) {
 			console.error("DynamoDB query error:", error);
@@ -117,18 +117,22 @@ const queryDynamoDB = createServerFn({
 				success: false,
 				error: error.message || "Unknown error occurred",
 				errorType: error.name || "UnknownError",
-			}
+			};
 		}
-	})
+	});
 
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
 	component: EntityDetail,
 	pendingComponent: EntityDetailPending,
-	ssr: 'data-only',
+	ssr: "data-only",
 	staleTime: 60_000, // Cache for 1 minute
 	loader: async ({ params }) => {
 		const schema = await getEntitySchema({ data: params.entityName });
-		return { entityName: params.entityName, tableName: params.tableName, schema };
+		return {
+			entityName: params.entityName,
+			tableName: params.tableName,
+			schema,
+		};
 	},
 });
 
@@ -185,7 +189,7 @@ function EntityDetail() {
 				currentIndex.pk.composite,
 				pkValues,
 				schema,
-			)
+			);
 
 			// Build SK if present using ElectroDB logic
 			let sk: string | undefined = undefined;
@@ -195,14 +199,14 @@ function EntityDetail() {
 					currentIndex.sk.composite,
 					skValues,
 					schema,
-				)
+				);
 				// Only include SK if it has meaningful values (not just the static template)
 				// Check if any SK values were actually provided
 				const hasSkValues = currentIndex.sk.composite.some(
 					(field) => skValues[field] && skValues[field].trim() !== "",
-				)
+				);
 				if (hasSkValues || currentIndex.sk.composite.length === 0) {
-					sk = skKey
+					sk = skKey;
 				}
 			}
 
@@ -214,7 +218,7 @@ function EntityDetail() {
 					entityName: schema.name,
 					tableName,
 				},
-			})
+			});
 
 			// Add the actual query keys to the result for display
 			setQueryResult({
@@ -224,7 +228,7 @@ function EntityDetail() {
 					sk,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 				},
-			})
+			});
 		} catch (error) {
 			console.error("Query error:", error);
 			setQueryResult({
@@ -247,20 +251,24 @@ function EntityDetail() {
 						: undefined,
 					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
 				},
-			})
+			});
 		} finally {
 			setIsQuerying(false);
 		}
-	}
+	};
 
 	return (
 		<div>
 			<h1 className="mb-2 text-xl font-bold">Entity: {entityName}</h1>
 			<p className="mb-2 text-muted-foreground">
-				Version: {schema.version} | Service: {schema.service} | Table: {tableName}
+				Version: {schema.version} | Service: {schema.service} | Table:{" "}
+				{tableName}
 			</p>
 			<p className="mb-5 text-sm text-muted-foreground">
-				Source: <code className="rounded bg-muted px-1 py-0.5">{schema.sourceFile}</code>
+				Source:{" "}
+				<code className="rounded bg-muted px-1 py-0.5">
+					{schema.sourceFile}
+				</code>
 			</p>
 
 			<div className="mb-5">
@@ -269,8 +277,8 @@ function EntityDetail() {
 					value={selectedIndex}
 					onChange={(e) => {
 						setSelectedIndex(e.target.value);
-						setPkValues({})
-						setSkValues({})
+						setPkValues({});
+						setSkValues({});
 						setQueryResult(null);
 					}}
 					className="rounded border bg-background p-2 text-sm"
@@ -287,7 +295,9 @@ function EntityDetail() {
 				<h3 className="text-base font-bold mb-4">Build Query Keys</h3>
 
 				<div className="mb-4">
-					<h4 className="text-sm font-semibold mb-3">Partition Key ({currentIndex.pk.field})</h4>
+					<h4 className="text-sm font-semibold mb-3">
+						Partition Key ({currentIndex.pk.field})
+					</h4>
 					{currentIndex.pk.composite.length === 0 ? (
 						<div>
 							<p className="mb-2 text-xs text-muted-foreground">
@@ -353,7 +363,9 @@ function EntityDetail() {
 
 				{currentIndex.sk && (
 					<div className="mb-4">
-						<h4 className="text-sm font-semibold mb-3">Sort Key ({currentIndex.sk.field})</h4>
+						<h4 className="text-sm font-semibold mb-3">
+							Sort Key ({currentIndex.sk.field})
+						</h4>
 						{currentIndex.sk.composite.length === 0 ? (
 							<div>
 								<p className="mb-2 text-xs text-muted-foreground">
@@ -418,10 +430,7 @@ function EntityDetail() {
 					</div>
 				)}
 
-				<Button
-					onClick={handleQuery}
-					disabled={isQuerying}
-				>
+				<Button onClick={handleQuery} disabled={isQuerying}>
 					{isQuerying ? "Querying..." : "Query DynamoDB"}
 				</Button>
 			</div>
@@ -432,9 +441,7 @@ function EntityDetail() {
 
 					{/* Show the actual query keys used */}
 					<div className="mb-4 rounded border border-border bg-muted p-3">
-						<h4 className="m-0 mb-2 text-sm font-semibold">
-							Query Keys Used:
-						</h4>
+						<h4 className="m-0 mb-2 text-sm font-semibold">Query Keys Used:</h4>
 						<div className="font-mono text-xs">
 							<div className="mb-1">
 								<strong>PK:</strong>
@@ -467,7 +474,9 @@ function EntityDetail() {
 							{queryResult.data.length > 0 ? (
 								<EntityQueryResultsTable data={queryResult.data} />
 							) : (
-								<p className="text-muted-foreground">No items found with these keys</p>
+								<p className="text-muted-foreground">
+									No items found with these keys
+								</p>
 							)}
 						</>
 					) : (
@@ -485,5 +494,5 @@ function EntityDetail() {
 				</div>
 			)}
 		</div>
-	)
+	);
 }

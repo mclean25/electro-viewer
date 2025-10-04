@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { getAllEntitySchemas } from "../utils/load-schema-cache";
+import { loadSchemaCache } from "../utils/load-schema-cache";
 import type { EntitySchema } from "../utils/build-schema-cache";
 import { useState } from "react";
 import {
@@ -19,11 +19,12 @@ import {
 	TableHeader,
 	TableRow,
 } from "@/components/ui/table";
+
 const getEntitySchemas = createServerFn({
 	method: "GET",
 }).handler(async () => {
-	// Load from pre-built schema cache (fast!)
-	return getAllEntitySchemas();
+	const cache = loadSchemaCache();
+	return cache.entities;
 });
 
 // Helper function to format key patterns for display
@@ -42,7 +43,7 @@ function formatKeyPattern(
 export const Route = createFileRoute("/tables/$tableName/entities")({
 	component: EntitiesViewer,
 	pendingComponent: EntitiesViewerPending,
-	ssr: 'data-only',
+	ssr: "data-only",
 	staleTime: 60_000, // Cache for 1 minute
 	loader: async ({ params }) => {
 		const schemas = await getEntitySchemas();
@@ -53,12 +54,8 @@ export const Route = createFileRoute("/tables/$tableName/entities")({
 function EntitiesViewerPending() {
 	return (
 		<div>
-			<h1 className="mb-4 text-xl font-bold">
-				ElectroDB Entity Definitions
-			</h1>
-			<p className="mb-6 text-sm text-muted-foreground">
-				Loading...
-			</p>
+			<h1 className="mb-4 text-xl font-bold">ElectroDB Entity Definitions</h1>
+			<p className="mb-6 text-sm text-muted-foreground">Loading...</p>
 
 			<div className="rounded-md border">
 				<Table>
@@ -104,7 +101,9 @@ function EntitiesViewerPending() {
 
 function EntitiesViewer() {
 	const { schemas, tableName } = Route.useLoaderData();
-	const [sorting, setSorting] = useState<SortingState>([{ id: "name", desc: false }]);
+	const [sorting, setSorting] = useState<SortingState>([
+		{ id: "name", desc: false },
+	]);
 
 	const columnHelper = createColumnHelper<EntitySchema>();
 
@@ -130,11 +129,7 @@ function EntitiesViewer() {
 		columnHelper.accessor("sourceFile", {
 			header: "Source File",
 			enableSorting: true,
-			cell: (info) => (
-				<span className="font-mono">
-					{info.getValue()}
-				</span>
-			),
+			cell: (info) => <span className="font-mono">{info.getValue()}</span>,
 		}),
 		columnHelper.display({
 			id: "pkPattern",
@@ -197,7 +192,9 @@ function EntitiesViewer() {
 			<h1 className="mb-4 text-xl font-bold">
 				ElectroDB Entity Definitions for {tableName}
 			</h1>
-			{!schemas && <div className="text-muted-foreground">Didn't load any schemas...</div>}
+			{!schemas && (
+				<div className="text-muted-foreground">Didn't load any schemas...</div>
+			)}
 			<p className="mb-6 text-sm text-muted-foreground">
 				Total entities: {schemas?.length}
 			</p>

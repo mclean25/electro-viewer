@@ -3,11 +3,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import * as path from "node:path";
-import { getSimpleEntitySchemas } from "../utils/load-schema-cache";
+import { loadSchemaCache } from "../utils/load-schema-cache";
 import { SideNav } from "../components/SideNav";
 
 const getConfig = async () => {
-	const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH ||
+	const configPath =
+		process.env.ELECTRO_VIEWER_CONFIG_PATH ||
 		path.resolve(process.cwd(), "electro-viewer-config.ts");
 	const configModule = await import(/* @vite-ignore */ configPath);
 	return configModule.config;
@@ -29,14 +30,19 @@ const listTables = createServerFn({
 const getEntitySchemas = createServerFn({
 	method: "GET",
 }).handler(async () => {
-	// Load from pre-built schema cache (fast!)
-	return getSimpleEntitySchemas();
+	const cache = loadSchemaCache();
+	return cache.entities.map((e) => ({
+		name: e.name,
+		version: e.version,
+		service: e.service,
+		sourceFile: e.sourceFile,
+	}));
 });
 
 export const Route = createFileRoute("/tables/$tableName")({
 	component: TableLayout,
 	pendingComponent: TableLayoutPending,
-	ssr: 'data-only',
+	ssr: "data-only",
 	staleTime: 60_000, // Cache for 1 minute
 	loader: async ({ params }) => {
 		const [tables, entities] = await Promise.all([
@@ -54,13 +60,19 @@ function TableLayoutPending() {
 				<h2 className="mb-4 text-lg font-bold">Tables</h2>
 				<div className="space-y-2">
 					{Array.from({ length: 3 }).map((_, i) => (
-						<div key={`table-${i}`} className="h-8 w-full animate-pulse rounded bg-muted" />
+						<div
+							key={`table-${i}`}
+							className="h-8 w-full animate-pulse rounded bg-muted"
+						/>
 					))}
 				</div>
 				<h2 className="mb-4 mt-8 text-lg font-bold">Entities</h2>
 				<div className="space-y-2">
 					{Array.from({ length: 5 }).map((_, i) => (
-						<div key={`entity-${i}`} className="h-8 w-full animate-pulse rounded bg-muted" />
+						<div
+							key={`entity-${i}`}
+							className="h-8 w-full animate-pulse rounded bg-muted"
+						/>
 					))}
 				</div>
 			</div>
