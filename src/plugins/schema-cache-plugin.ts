@@ -5,7 +5,7 @@
  */
 import type { Plugin } from "vite";
 import { buildAndWriteSchemaCache } from "../utils/build-schema-cache";
-import chokidar from "chokidar";
+import chokidar, { type FSWatcher } from "chokidar";
 import fg from "fast-glob";
 import * as path from "node:path";
 
@@ -17,7 +17,7 @@ interface SchemaCachePluginOptions {
 
 export function schemaCachePlugin(options: SchemaCachePluginOptions): Plugin {
 	const { entityConfigPaths, tsconfigPath, env } = options;
-	let watcher: chokidar.FSWatcher | null = null;
+	let watcher: FSWatcher | null = null;
 	let isBuilding = false;
 
 	const buildSchema = async () => {
@@ -48,19 +48,32 @@ export function schemaCachePlugin(options: SchemaCachePluginOptions): Plugin {
 			// Set up file watching for entity config files
 			const projectRoot = process.env.ELECTRO_VIEWER_CWD || process.cwd();
 
-			// Convert glob patterns to absolute paths for chokidar
-			const patternsToWatch = entityConfigPaths.map(pattern =>
-				path.isAbsolute(pattern) ? pattern : path.join(projectRoot, pattern)
-			);
+			console.log(`\n👀 Setting up file watcher...`);
+			console.log(`   Project root: ${projectRoot}`);
+			console.log(`   Patterns: ${entityConfigPaths.join(", ")}`);
 
-			console.log(`\n👀 Watching entity file patterns: ${entityConfigPaths.join(", ")}`);
+			// Resolve glob patterns to actual files using fast-glob
+			const filesToWatch = await fg(entityConfigPaths, {
+				cwd: projectRoot,
+				absolute: true,
+				onlyFiles: true,
+			});
 
-			// Watch entity files using glob patterns
-			// Chokidar supports glob patterns directly
-			watcher = chokidar.watch(patternsToWatch, {
+			if (filesToWatch.length === 0) {
+				console.warn(`   ⚠️  No files found matching patterns`);
+				return;
+			}
+
+			console.log(`   Found ${filesToWatch.length} file(s) to watch`);
+
+			// Watch the resolved files
+			watcher = chokidar.watch(filesToWatch, {
 				persistent: true,
 				ignoreInitial: true,
-				cwd: projectRoot,
+			});
+
+			watcher.on("ready", () => {
+				console.log(`   ✅ Watcher ready`);
 			});
 
 			watcher.on("change", async (filePath) => {
