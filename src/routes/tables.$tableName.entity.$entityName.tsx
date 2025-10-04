@@ -9,9 +9,13 @@ import {
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
-import { loadTypeScriptFiles } from "../utils/load-typescript";
+import { getEntitySchemaByName } from "../utils/load-schema-cache";
+import type { EntitySchema } from "../utils/build-schema-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { buildElectroDBKey } from "../utils/electrodb-keys";
+import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
+
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
 	// Use CLI config path if available, otherwise use current working directory
@@ -20,30 +24,6 @@ const getConfig = async () => {
 	const configModule = await import(/* @vite-ignore */ configPath);
 	return configModule.config;
 };
-import { buildElectroDBKey } from "../utils/electrodb-keys";
-import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
-
-interface EntitySchema {
-	name: string;
-	version: string;
-	service: string;
-	sourceFile: string;
-	indexes: {
-		[key: string]: {
-			pk: {
-				field: string;
-				composite: string[];
-				template?: string;
-			}
-			sk?: {
-				field: string;
-				composite: string[];
-				template?: string;
-			}
-		}
-	}
-	attributes: string[];
-}
 
 // Server function to get entity schema by name
 const getEntitySchema = createServerFn({
@@ -51,110 +31,12 @@ const getEntitySchema = createServerFn({
 })
 	.validator((entityName: string) => entityName)
 	.handler(async ({ data: entityName }) => {
-		try {
-			// Load config from current working directory
-			const config = await getConfig();
-
-			// Dynamically import the entity files using glob patterns
-			const serviceModule = await loadTypeScriptFiles(
-				config.entityConfigPaths,
-				config.tsconfigPath,
-				config.env,
-			);
-
-			for (const [name, entityData] of Object.entries(serviceModule)) {
-				const entity = entityData.module;
-
-				if (entity && typeof entity === "object" && "model" in entity) {
-					const model = (entity as any).model;
-					if (model.entity === entityName) {
-						const indexes: EntitySchema["indexes"] = {};
-
-						// Extract primary index
-						// In ElectroDB, the primary index is either named "primary" or is the one without an "index" property
-						let primaryIndex = model.indexes?.primary;
-						let primaryIndexName = "primary";
-
-						// If no "primary" index, find the index without an "index" property (that's the primary)
-						if (!primaryIndex && model.indexes) {
-							for (const [indexName, indexDef] of Object.entries(model.indexes)) {
-								const idx = indexDef as any;
-								if (!idx.index) {
-									primaryIndex = idx;
-									primaryIndexName = indexName;
-									break;
-								}
-							}
-						}
-
-						if (primaryIndex) {
-							indexes.primary = {
-								pk: {
-									field: primaryIndex.pk.field || "pk",
-									composite: primaryIndex.pk.facets || primaryIndex.pk.composite || [],
-								},
-							}
-
-							if (primaryIndex.sk) {
-								indexes.primary.sk = {
-									field: primaryIndex.sk.field || "sk",
-									composite: primaryIndex.sk.facets || primaryIndex.sk.composite || [],
-								}
-							}
-						}
-
-						// Extract GSI indexes
-						if (model.indexes) {
-							for (const [indexName, indexDef] of Object.entries(
-								model.indexes,
-							)) {
-								if (indexName !== "primary") {
-									const idx = indexDef as any;
-									indexes[indexName] = {
-										pk: {
-											field: idx.pk?.field || `${indexName}pk`,
-											composite: idx.pk?.facets || idx.pk?.composite || [],
-										},
-									}
-
-									if (idx.sk) {
-										indexes[indexName].sk = {
-											field: idx.sk?.field || `${indexName}sk`,
-											composite: idx.sk?.facets || idx.sk?.composite || [],
-										}
-									}
-								}
-							}
-						}
-
-						const attributes: string[] = [];
-						if (model.schema?.attributes) {
-							attributes.push(...Object.keys(model.schema.attributes));
-						}
-
-						return {
-							name: model.entity,
-							version: model.version,
-							service: model.service,
-							sourceFile: entityData.sourceFile,
-							indexes,
-							attributes,
-						} as EntitySchema
-					}
-				}
-			}
-			throw new Error(`Entity '${entityName}' not found in entity files matching: ${config.entityConfigPaths.join(", ")}`);
-		} catch (error: any) {
-			console.error("Error loading entity schema:", error);
-
-			// Provide more helpful error messages
-			if (error.code === 'MODULE_NOT_FOUND') {
-				const config = await getConfig();
-				throw new Error(`Could not find entity config files matching: ${config.entityConfigPaths.join(", ")}\n\nPlease update the 'entityConfigPaths' in your electro-viewer-config.ts file.`);
-			}
-
-			throw error;
+		// Load from pre-built schema cache (fast!)
+		const schema = getEntitySchemaByName(entityName);
+		if (!schema) {
+			throw new Error(`Entity '${entityName}' not found in schema cache`);
 		}
+		return schema;
 	})
 
 // Server function to query DynamoDB

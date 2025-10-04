@@ -3,7 +3,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import * as path from "node:path";
-import { loadTypeScriptFiles } from "../utils/load-typescript";
+import { getSimpleEntitySchemas } from "../utils/load-schema-cache";
 import { SideNav } from "../components/SideNav";
 
 const getConfig = async () => {
@@ -26,41 +26,11 @@ const listTables = createServerFn({
 	return result.TableNames || [];
 });
 
-interface EntitySchema {
-	name: string;
-	version: string;
-	service: string;
-	sourceFile: string;
-}
-
 const getEntitySchemas = createServerFn({
 	method: "GET",
 }).handler(async () => {
-	const config = await getConfig();
-	const serviceModule = await loadTypeScriptFiles(
-		config.entityConfigPaths,
-		config.tsconfigPath,
-		config.env,
-	);
-
-	const schemas: EntitySchema[] = [];
-
-	for (const [_name, entityData] of Object.entries(serviceModule)) {
-		const entity = entityData.module;
-		const sourceFile = entityData.sourceFile;
-
-		if (entity && typeof entity === "object" && "model" in entity) {
-			const model = (entity as any).model;
-			schemas.push({
-				name: model.entity,
-				version: model.version,
-				service: model.service,
-				sourceFile,
-			});
-		}
-	}
-
-	return schemas;
+	// Load from pre-built schema cache (fast!)
+	return getSimpleEntitySchemas();
 });
 
 export const Route = createFileRoute("/tables/$tableName")({
