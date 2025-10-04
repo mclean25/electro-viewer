@@ -323,4 +323,3 @@ export const CompanyModel = new Entity(
   },
   { client, table },
 );
-

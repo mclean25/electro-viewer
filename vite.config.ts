@@ -1,18 +1,19 @@
-import { defineConfig } from "vite";
-import tsConfigPaths from "vite-tsconfig-paths";
-import { tanstackStart } from "@tanstack/react-start/plugin/vite";
-import viteReact from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
-import { schemaCachePlugin } from "./src/plugins/schema-cache-plugin";
-import * as path from "node:path";
-import { build } from "esbuild";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
+import * as path from "node:path";
 import { join } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
+import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import viteReact from "@vitejs/plugin-react";
+import { build } from "esbuild";
+import { defineConfig } from "vite";
+import tsConfigPaths from "vite-tsconfig-paths";
+import { schemaCachePlugin } from "./src/plugins/schema-cache-plugin";
 
 // Load electro-viewer config using esbuild
 const getConfig = async () => {
-  const configPath = process.env.ELECTRO_VIEWER_CONFIG_PATH ||
+  const configPath =
+    process.env.ELECTRO_VIEWER_CONFIG_PATH ||
     path.resolve(process.cwd(), "electro-viewer-config.ts");
 
   // Create a temporary directory for the bundle
@@ -37,7 +38,7 @@ const getConfig = async () => {
     // Clean up temp directory
     try {
       rmSync(tempDir, { recursive: true, force: true });
-    } catch (err) {
+    } catch (_err) {
       // Ignore cleanup errors
     }
   }

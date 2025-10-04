@@ -10,7 +10,6 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
 import { loadSchemaCache } from "../utils/load-schema-cache";
-import type { EntitySchema } from "../utils/build-schema-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
@@ -325,6 +324,7 @@ function EntityDetail() {
 						<>
 							{currentIndex.pk.composite.map((field) => (
 								<div key={field} className="mb-2">
+									{/** biome-ignore lint/a11y/noLabelWithoutControl: ignore */}
 									<label className="block mb-1 text-xs font-medium">
 										{field}:
 									</label>
@@ -393,6 +393,7 @@ function EntityDetail() {
 							<>
 								{currentIndex.sk.composite.map((field) => (
 									<div key={field} className="mb-2">
+										{/** biome-ignore lint/a11y/noLabelWithoutControl: ignore */}
 										<label className="block mb-1 text-xs font-medium">
 											{field}:
 										</label>

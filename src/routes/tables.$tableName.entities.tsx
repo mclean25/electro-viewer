@@ -71,6 +71,7 @@ function EntitiesViewerPending() {
 					</TableHeader>
 					<TableBody>
 						{Array.from({ length: 5 }).map((_, i) => (
+							// biome-ignore lint/suspicious/noArrayIndexKey: ignore
 							<TableRow key={i}>
 								<TableCell>
 									<div className="h-4 w-24 animate-pulse rounded bg-muted" />

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 import { buildElectroDBKey } from "./electrodb-keys";
 
 describe("buildElectroDBKey", () => {
@@ -14,9 +14,9 @@ describe("buildElectroDBKey", () => {
         true, // isPartitionKey
         ["companyId"], // composite attributes
         { companyId: "1353d4c0-8ba6-4c13-a679-cdd6d6dba7ea" },
-        fileModelSchema
+        fileModelSchema,
       );
-      
+
       expect(pk).toBe("$model#companyid_1353d4c0-8ba6-4c13-a679-cdd6d6dba7ea");
     });
 
@@ -25,9 +25,9 @@ describe("buildElectroDBKey", () => {
         false, // not partition key (this is SK)
         ["fileId"], // composite attributes
         { fileId: "file-123" },
-        fileModelSchema
+        fileModelSchema,
       );
-      
+
       expect(sk).toBe("$filemodel_1#fileid_file-123");
     });
   });
@@ -45,9 +45,9 @@ describe("buildElectroDBKey", () => {
           true, // isPartitionKey
           [], // no composite attributes
           {}, // no values needed
-          companySchema
+          companySchema,
         );
-        
+
         expect(pk).toBe("$model");
       });
     });
@@ -58,9 +58,9 @@ describe("buildElectroDBKey", () => {
           false, // not partition key (this is SK)
           ["companyId"], // composite attributes
           { companyId: "1353d4c0-8ba6-4c13-a679-cdd6d6dba7ea" },
-          companySchema
+          companySchema,
         );
-        
+
         expect(sk).toBe("$company_1#companyid_1353d4c0-8ba6-4c13-a679-cdd6d6dba7ea");
       });
 
@@ -69,9 +69,9 @@ describe("buildElectroDBKey", () => {
           false, // not partition key (this is SK)
           ["companyId"], // composite attributes
           { companyId: "" }, // empty value
-          companySchema
+          companySchema,
         );
-        
+
         expect(sk).toBe("$company_1#companyid_");
       });
 
@@ -80,9 +80,9 @@ describe("buildElectroDBKey", () => {
           false, // not partition key (this is SK)
           ["companyId"], // composite attributes
           { companyId: "3512568b-1a5a-48ed-be13-771f167aafdf" },
-          companySchema
+          companySchema,
         );
-        
+
         expect(sk).toBe("$company_1#companyid_3512568b-1a5a-48ed-be13-771f167aafdf");
       });
     });
@@ -96,12 +96,7 @@ describe("buildElectroDBKey", () => {
         service: "app",
       };
 
-      const sk = buildElectroDBKey(
-        false,
-        ["userId"],
-        { userId: "123" },
-        schema
-      );
+      const sk = buildElectroDBKey(false, ["userId"], { userId: "123" }, schema);
 
       expect(sk).toBe("$user_1#userid_123");
     });
@@ -113,12 +108,7 @@ describe("buildElectroDBKey", () => {
         service: "app",
       };
 
-      const sk = buildElectroDBKey(
-        false,
-        ["userId"],
-        { userId: "123" },
-        schema
-      );
+      const sk = buildElectroDBKey(false, ["userId"], { userId: "123" }, schema);
 
       expect(sk).toBe("$user_2#userid_123");
     });
@@ -134,7 +124,7 @@ describe("buildElectroDBKey", () => {
         true,
         ["categoryId"],
         { categoryId: "electronics" },
-        schema
+        schema,
       );
 
       expect(pk).toBe("$catalog#categoryid_electronics");
@@ -153,7 +143,7 @@ describe("buildElectroDBKey", () => {
         true, // isPartitionKey
         ["organizationId", "departmentId"],
         { organizationId: "org123", departmentId: "dept456" },
-        schema
+        schema,
       );
 
       expect(pk).toBe("$app#organizationid_org123#departmentid_dept456");
@@ -170,7 +160,7 @@ describe("buildElectroDBKey", () => {
         false, // not partition key
         [], // no composite attributes
         {},
-        schema
+        schema,
       );
 
       expect(sk).toBe("$config_1");
@@ -187,7 +177,7 @@ describe("buildElectroDBKey", () => {
         false, // not partition key
         ["categoryId", "productId"],
         { categoryId: "electronics", productId: "laptop123" },
-        schema
+        schema,
       );
 
       expect(sk).toBe("$product_3#categoryid_electronics#productid_laptop123");

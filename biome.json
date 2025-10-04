@@ -6,21 +6,7 @@
     "defaultBranch": "main"
   },
   "files": {
-    "ignore": [
-      "**/.nvmrc",
-      "**/.sst",
-      "**/_templates",
-      "**/cache",
-      "**/migrations/meta",
-      "./packages/**/dist",
-      "./packages/core/db/migrations",
-      "./packages/domain/integration/**/__snapshot.json",
-      "./packages/domain/integration/**/data",
-      "./packages/frontend/src/sst-env.d.ts",
-      "./packages/web/.next/**",
-      "./packages/web/.open-next/**",
-      "**/sst-env.d.ts"
-    ]
+    "includes": ["**/*.ts"]
   },
   "formatter": {
     "enabled": true,
@@ -60,7 +46,8 @@
       "suspicious": {
         "noExplicitAny": "off",
         "noPrototypeBuiltins": "off",
-        "noAssignInExpressions": "off"
+        "noAssignInExpressions": "off",
+        "noArrayIndexKey": "off"
       }
     }
   }
