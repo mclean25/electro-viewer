@@ -91,7 +91,7 @@ export async function buildSchemaCache(
           pk: {
             field: primaryIndex.pk.field || "pk",
             composite:
-              primaryIndex.pk.facets?.map((f: any) => f.name) ||
+              primaryIndex.pk.facets ||
               primaryIndex.pk.composite ||
               [],
             template:
@@ -105,7 +105,7 @@ export async function buildSchemaCache(
           indexes.primary.sk = {
             field: primaryIndex.sk.field || "sk",
             composite:
-              primaryIndex.sk.facets?.map((f: any) => f.name) ||
+              primaryIndex.sk.facets ||
               primaryIndex.sk.composite ||
               [],
             template:
@@ -125,7 +125,9 @@ export async function buildSchemaCache(
               pk: {
                 field: idx.pk?.field || `${indexName}pk`,
                 composite:
-                  idx.pk?.facets?.map((f: any) => f.name) || idx.pk?.composite || [],
+                  idx.pk?.facets ||
+                  idx.pk?.composite ||
+                  [],
                 template: "",
               },
             };
@@ -134,7 +136,9 @@ export async function buildSchemaCache(
               indexes[indexName].sk = {
                 field: idx.sk?.field || `${indexName}sk`,
                 composite:
-                  idx.sk?.facets?.map((f: any) => f.name) || idx.sk?.composite || [],
+                  idx.sk?.facets ||
+                  idx.sk?.composite ||
+                  [],
                 template: "",
               };
             }

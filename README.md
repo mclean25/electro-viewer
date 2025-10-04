@@ -18,6 +18,7 @@ files in your project.
 - [ ] Edit support
 - [ ] Add support
 - [ ] Run arbitrary queries
+- [ ] Query read units used statistics
 
 ## Installation
 
