@@ -1,5 +1,7 @@
 # Electro Viewer
 
+> **⚠️ Under Development**: This package is currently under active development. Some bugs and breaking changes can be expected.
+
 Electro Viewer is a tool to help you quickly browse your ElectroDB enties by reading the configuration
 files in your project.
 
@@ -62,27 +64,30 @@ export const config = {
 export type ElectroViewerConfig = typeof config;
 ```
 
+| Option | Type | Required | Default | Description |
+|--------|------|----------|---------|-------------|
+| `profile` | string | Yes | - | AWS profile name |
+| `region` | string | No | Profile default | AWS region |
+| `serviceConfigPath` | string | Yes | - | Path to entities file |
+| `tsconfigPath` | string | No | `"./tsconfig.json"` | Path to tsconfig.json |
+| `env` | Record<string, string> | No | `{}` | Environment variables |
+
 ## Usage
 
-From your project directory:
+### SST
 
-```bash
-electro-viewer
+If you're using [SST](https://sst.dev/), you can add a custom commmand to the multiplexer to
+automatically start Electro Viewer when you run `sst start`:
+
+```typescript
+new sst.x.DevCommand("ElectroViewer", {
+  link: [myTable],
+  dev: {
+    autostart: true,
+    command: "pnpm electro-viewer",
+  },
+});
 ```
-
-Or with a custom config:
-
-```bash
-electro-viewer --config ./custom-config.ts
-```
-
-Or with a custom port:
-
-```bash
-electro-viewer --port 4000
-```
-
-The viewer will start at `http://localhost:3030` (or your specified port).
 
 ## How It Works
 
@@ -94,75 +99,3 @@ Make sure your AWS profile has permissions to:
 - `dynamodb:Query`
 - `dynamodb:GetItem`
 - Access to the tables you want to query
-
-## Configuration Options
-
-| Option | Type | Required | Default | Description |
-|--------|------|----------|---------|-------------|
-| `profile` | string | Yes | - | AWS profile name |
-| `region` | string | No | Profile default | AWS region |
-| `serviceConfigPath` | string | Yes | - | Path to entities file |
-| `tsconfigPath` | string | No | `"./tsconfig.json"` | Path to tsconfig.json |
-| `env` | Record<string, string> | No | `{}` | Environment variables |
-
-## Troubleshooting
-
-### "Cannot find module '@core/...'"
-
-Add the missing path alias to your `tsconfig.json`:
-
-```json
-{
-  "compilerOptions": {
-    "baseUrl": ".",
-    "paths": {
-      "@core/*": ["packages/core/*"]
-    }
-  }
-}
-```
-
-### "Variable X is undefined"
-
-Add the required environment variable to your config:
-
-```typescript
-export const config = {
-  // ... other config
-  env: {
-    X: "value",
-  },
-};
-```
-
-Or add it to your `.env` file.
-
-### "Could not find service config file"
-
-Make sure `serviceConfigPath` points to the correct file relative to your project root.
-
-## Development
-
-```bash
-# Install dependencies
-pnpm install
-
-# Start dev server
-pnpm dev
-
-# Build for production
-pnpm build
-
-# Run tests
-pnpm test
-
-# Lint and format
-npx biome check --write .
-
-# Type check
-npx tsc --noEmit
-```
-
-## License
-
-ISC
