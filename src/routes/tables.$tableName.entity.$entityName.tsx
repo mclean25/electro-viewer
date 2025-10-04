@@ -241,11 +241,46 @@ const queryDynamoDB = createServerFn({
 
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
 	component: EntityDetail,
+	pendingComponent: EntityDetailPending,
+	ssr: 'data-only',
+	staleTime: 60_000, // Cache for 1 minute
 	loader: async ({ params }) => {
 		const schema = await getEntitySchema({ data: params.entityName });
 		return { entityName: params.entityName, tableName: params.tableName, schema };
 	},
 });
+
+function EntityDetailPending() {
+	return (
+		<div>
+			<div className="mb-2">
+				<div className="h-8 w-48 animate-pulse rounded bg-muted" />
+			</div>
+			<div className="mb-2">
+				<div className="h-4 w-96 animate-pulse rounded bg-muted" />
+			</div>
+			<div className="mb-5">
+				<div className="h-4 w-64 animate-pulse rounded bg-muted" />
+			</div>
+
+			<div className="mb-5">
+				<h3 className="text-base font-semibold mb-2">Select Index:</h3>
+				<div className="h-10 w-48 animate-pulse rounded bg-muted" />
+			</div>
+
+			<div className="mb-5 rounded border bg-muted/50 p-4">
+				<h3 className="text-base font-bold mb-4">Build Query Keys</h3>
+				<div className="space-y-3">
+					<div className="h-4 w-32 animate-pulse rounded bg-muted" />
+					<div className="h-10 w-80 animate-pulse rounded bg-muted" />
+					<div className="h-4 w-32 animate-pulse rounded bg-muted" />
+					<div className="h-10 w-80 animate-pulse rounded bg-muted" />
+					<div className="h-10 w-32 animate-pulse rounded bg-muted" />
+				</div>
+			</div>
+		</div>
+	);
+}
 
 function EntityDetail() {
 	const { entityName, tableName, schema } = Route.useLoaderData();

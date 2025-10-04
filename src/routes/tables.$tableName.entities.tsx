@@ -198,11 +198,66 @@ function formatKeyPattern(
 
 export const Route = createFileRoute("/tables/$tableName/entities")({
 	component: EntitiesViewer,
+	pendingComponent: EntitiesViewerPending,
+	ssr: 'data-only',
+	staleTime: 60_000, // Cache for 1 minute
 	loader: async ({ params }) => {
 		const schemas = await getEntitySchemas();
 		return { schemas, tableName: params.tableName };
 	},
 });
+
+function EntitiesViewerPending() {
+	return (
+		<div>
+			<h1 className="mb-4 text-xl font-bold">
+				ElectroDB Entity Definitions
+			</h1>
+			<p className="mb-6 text-sm text-muted-foreground">
+				Loading...
+			</p>
+
+			<div className="rounded-md border">
+				<Table>
+					<TableHeader>
+						<TableRow>
+							<TableHead>Entity Name</TableHead>
+							<TableHead>Service Name</TableHead>
+							<TableHead>Source File</TableHead>
+							<TableHead>PK Pattern</TableHead>
+							<TableHead>SK Pattern</TableHead>
+							<TableHead>No. of Fields</TableHead>
+						</TableRow>
+					</TableHeader>
+					<TableBody>
+						{Array.from({ length: 5 }).map((_, i) => (
+							<TableRow key={i}>
+								<TableCell>
+									<div className="h-4 w-24 animate-pulse rounded bg-muted" />
+								</TableCell>
+								<TableCell>
+									<div className="h-4 w-20 animate-pulse rounded bg-muted" />
+								</TableCell>
+								<TableCell>
+									<div className="h-4 w-48 animate-pulse rounded bg-muted" />
+								</TableCell>
+								<TableCell>
+									<div className="h-4 w-32 animate-pulse rounded bg-muted" />
+								</TableCell>
+								<TableCell>
+									<div className="h-4 w-32 animate-pulse rounded bg-muted" />
+								</TableCell>
+								<TableCell>
+									<div className="h-4 w-8 animate-pulse rounded bg-muted" />
+								</TableCell>
+							</TableRow>
+						))}
+					</TableBody>
+				</Table>
+			</div>
+		</div>
+	);
+}
 
 function EntitiesViewer() {
 	const { schemas, tableName } = Route.useLoaderData();

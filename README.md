@@ -14,7 +14,10 @@ files in your project.
 ## Roadmap
 
 - [x] Read support
-- [ ] Write support
+- [ ] Delete Support
+- [ ] Edit support
+- [ ] Add support
+- [ ] Run arbitrary queries
 
 ## Installation
 

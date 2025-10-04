@@ -105,7 +105,7 @@ export function EntityQueryResultsTable({
 			/>
 			<div className="rounded-md border">
 				<Table>
-					<TableHeader className="sticky top-0 z-10 bg-background">
+					<TableHeader>
 						{table.getHeaderGroups().map((headerGroup) => (
 							<TableRow key={headerGroup.id}>
 								{headerGroup.headers.map((header) => (
