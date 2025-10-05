@@ -41,11 +41,8 @@ const insertRecord = createServerFn({
   method: "POST",
 })
   .validator(
-    (params: {
-      item: Record<string, any>;
-      entityName: string;
-      tableName: string;
-    }) => params,
+    (params: { item: Record<string, any>; entityName: string; tableName: string }) =>
+      params,
   )
   .handler(async ({ data }) => {
     const { item, entityName, tableName } = data;
@@ -60,27 +57,24 @@ const insertRecord = createServerFn({
         throw new Error(`Entity '${entityName}' not found in schema cache`);
       }
 
-      // Build PK and SK using ElectroDB logic
-      const primaryIndexName = Object.keys(schema.indexes)[0];
-      const primaryIndex = schema.indexes[primaryIndexName];
-      const pk = buildElectroDBKey(
-        true,
-        primaryIndex.pk.composite,
-        item,
-        schema,
-      );
-      const sk = primaryIndex.sk
-        ? buildElectroDBKey(false, primaryIndex.sk.composite, item, schema)
-        : undefined;
-
-      // Build the item to insert
+      // Build ALL index keys (primary + GSIs) using ElectroDB logic
       const itemToInsert: Record<string, any> = {
         ...item,
-        pk,
-        ...(sk && { sk }),
         __edb_e__: schema.name,
         __edb_v__: schema.version,
       };
+
+      // Build keys for all indexes
+      // ElectroDb normally does this automatically, but since we're using the AWS SDK we need to do it manually
+      for (const [indexName, indexDef] of Object.entries(schema.indexes)) {
+        const pkValue = buildElectroDBKey(true, indexDef.pk.composite, item, schema);
+        itemToInsert[indexDef.pk.field] = pkValue;
+
+        if (indexDef.sk) {
+          const skValue = buildElectroDBKey(false, indexDef.sk.composite, item, schema);
+          itemToInsert[indexDef.sk.field] = skValue;
+        }
+      }
 
       // Insert into DynamoDB
       const client = new DynamoDBClient({
@@ -111,9 +105,7 @@ const insertRecord = createServerFn({
     }
   });
 
-export const Route = createFileRoute(
-  "/tables/$tableName/entity/$entityName_/insert",
-)({
+export const Route = createFileRoute("/tables/$tableName/entity/$entityName_/insert")({
   component: InsertRecord,
   ssr: "data-only",
   loader: async ({ params }) => {
@@ -286,21 +278,15 @@ function InsertRecord() {
           <div className="space-y-2">
             <Label htmlFor={attrName}>
               {attrName}
-              {isEffectivelyRequired && (
-                <span className="text-red-500 ml-1">*</span>
-              )}
-              <span className="text-xs text-muted-foreground ml-2">
-                ({attr.type})
-              </span>
+              {isEffectivelyRequired && <span className="text-red-500 ml-1">*</span>}
+              <span className="text-xs text-muted-foreground ml-2">({attr.type})</span>
             </Label>
             {attr.type === "boolean" ? (
               <div className="flex items-center space-x-2">
                 <Checkbox
                   id={attrName}
                   checked={field.state.value === true}
-                  onCheckedChange={(checked) =>
-                    field.handleChange(checked === true)
-                  }
+                  onCheckedChange={(checked) => field.handleChange(checked === true)}
                 />
                 <label
                   htmlFor={attrName}
@@ -309,17 +295,13 @@ function InsertRecord() {
                   {field.state.value ? "True" : "False"}
                 </label>
               </div>
-            ) : attr.type === "map" ||
-              attr.type === "list" ||
-              attr.type === "set" ? (
+            ) : attr.type === "map" || attr.type === "list" || attr.type === "set" ? (
               <Textarea
                 id={attrName}
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={`Enter ${attr.type} as JSON`}
-                className={
-                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
-                }
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
               />
             ) : attr.type === "number" ? (
               <Input
@@ -327,9 +309,7 @@ function InsertRecord() {
                 type="number"
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={
-                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
-                }
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
               />
             ) : (
               <Input
@@ -337,9 +317,7 @@ function InsertRecord() {
                 type="text"
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={
-                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
-                }
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
               />
             )}
             {field.state.meta.errors.length > 0 && (
@@ -357,8 +335,7 @@ function InsertRecord() {
     <div className="max-w-4xl">
       <h1 className="mb-2 text-xl font-bold">Insert Record: {entityName}</h1>
       <p className="mb-5 text-sm text-muted-foreground">
-        Table: {tableName} | Version: {schema.version} | Service:{" "}
-        {schema.service}
+        Table: {tableName} | Version: {schema.version} | Service: {schema.service}
       </p>
 
       <form
@@ -389,11 +366,7 @@ function InsertRecord() {
               <h3 className="text-sm font-semibold mt-4">Sort Key Fields</h3>
               <div className="space-y-4">
                 {skFields.map((field) =>
-                  renderField(
-                    field,
-                    schema.attributes[field]?.required || false,
-                    true,
-                  ),
+                  renderField(field, schema.attributes[field]?.required || false, true),
                 )}
               </div>
             </>
@@ -456,9 +429,7 @@ function InsertRecord() {
             ) : (
               <div>
                 <p className="font-semibold text-red-600">Insert failed</p>
-                <p className="text-sm text-red-500 mt-1">
-                  {submitResult.error}
-                </p>
+                <p className="text-sm text-red-500 mt-1">{submitResult.error}</p>
               </div>
             )}
           </div>

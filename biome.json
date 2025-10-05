@@ -6,7 +6,7 @@
     "defaultBranch": "main"
   },
   "files": {
-    "includes": ["**/*.ts"]
+    "includes": ["**/*.ts", "**/*.tsx", "src/**/*.json"]
   },
   "formatter": {
     "enabled": true,

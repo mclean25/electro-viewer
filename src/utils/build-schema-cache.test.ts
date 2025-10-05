@@ -6,9 +6,7 @@ import { buildSchemaCache } from "./build-schema-cache";
 
 describe("buildSchemaCache", () => {
   it("should parse Company entity correctly", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     const company = cache.entities.find((e) => e.name === "company");
     expect(company).toBeDefined();
@@ -31,9 +29,7 @@ describe("buildSchemaCache", () => {
   });
 
   it("should parse FileModel entity correctly", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     const fileModel = cache.entities.find((e) => e.name === "fileModel");
     expect(fileModel).toBeDefined();
@@ -58,9 +54,7 @@ describe("buildSchemaCache", () => {
   });
 
   it("should parse CompanyModel entity with GSI correctly", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     const companyModel = cache.entities.find((e) => e.name === "companyModel");
     expect(companyModel).toBeDefined();
@@ -84,7 +78,10 @@ describe("buildSchemaCache", () => {
 
     expect(companyModel?.indexes.byStatus.sk).toBeDefined();
     expect(companyModel?.indexes.byStatus.sk?.field).toBe("gsi1sk");
-    expect(companyModel?.indexes.byStatus.sk?.composite).toEqual(["status", "createdAt"]);
+    expect(companyModel?.indexes.byStatus.sk?.composite).toEqual([
+      "status",
+      "createdAt",
+    ]);
 
     // Ensure no null values in composite arrays
     expect(companyModel?.indexes["primary"].pk.composite).not.toContain(null);
@@ -94,9 +91,7 @@ describe("buildSchemaCache", () => {
   });
 
   it("should parse all three entities", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     expect(cache.entities).toHaveLength(3);
 
@@ -107,9 +102,7 @@ describe("buildSchemaCache", () => {
   });
 
   it("should extract attributes with full metadata", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     const company = cache.entities.find((e) => e.name === "company");
     expect(company?.attributes).toBeDefined();
@@ -145,23 +138,21 @@ describe("buildSchemaCache", () => {
   });
 
   it("should ensure no null/undefined values in any composite arrays", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     for (const entity of cache.entities) {
       for (const [indexName, index] of Object.entries(entity.indexes)) {
         // Check PK composites
         expect(
           index.pk.composite.every((c) => c !== null && c !== undefined),
-          `${entity.name}.${indexName}.pk.composite should not contain null/undefined`
+          `${entity.name}.${indexName}.pk.composite should not contain null/undefined`,
         ).toBe(true);
 
         // Check SK composites if present
         if (index.sk) {
           expect(
             index.sk.composite.every((c) => c !== null && c !== undefined),
-            `${entity.name}.${indexName}.sk.composite should not contain null/undefined`
+            `${entity.name}.${indexName}.sk.composite should not contain null/undefined`,
           ).toBe(true);
         }
       }
@@ -169,14 +160,10 @@ describe("buildSchemaCache", () => {
   });
 
   it("should include metadata about the cache generation", async () => {
-    const cache = await buildSchemaCache([
-      "test/dynamo/service.ts",
-    ]);
+    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
 
     expect(cache.generatedAt).toBeDefined();
     expect(cache.config).toBeDefined();
-    expect(cache.config.entityConfigPaths).toEqual([
-      "test/dynamo/service.ts",
-    ]);
+    expect(cache.config.entityConfigPaths).toEqual(["test/dynamo/service.ts"]);
   });
 });

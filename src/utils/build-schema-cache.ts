@@ -24,6 +24,7 @@ export interface EntitySchema {
   sourceFile: string;
   indexes: {
     [key: string]: {
+      indexName?: string;
       pk: {
         field: string;
         composite: string[];
@@ -84,12 +85,10 @@ export async function buildSchemaCache(
         for (const [indexName, indexDef] of Object.entries(model.indexes)) {
           const idx = indexDef as any;
           indexes[indexName] = {
+            indexName: idx.index, // Capture actual DynamoDB GSI name
             pk: {
               field: idx.pk?.field || "pk",
-              composite:
-                idx.pk?.facets ||
-                idx.pk?.composite ||
-                [],
+              composite: idx.pk?.facets || idx.pk?.composite || [],
               template:
                 model.prefixes?.[indexName]?.pk?.prefix ||
                 model.prefixes?.[""]?.pk?.prefix ||
@@ -100,10 +99,7 @@ export async function buildSchemaCache(
           if (idx.sk) {
             indexes[indexName].sk = {
               field: idx.sk?.field || "sk",
-              composite:
-                idx.sk?.facets ||
-                idx.sk?.composite ||
-                [],
+              composite: idx.sk?.facets || idx.sk?.composite || [],
               template:
                 model.prefixes?.[indexName]?.sk?.prefix ||
                 model.prefixes?.[""]?.sk?.prefix ||
@@ -116,9 +112,7 @@ export async function buildSchemaCache(
       // Extract attributes with full metadata
       const attributes: Record<string, AttributeDefinition> = {};
       if (model.schema?.attributes) {
-        for (const [attrName, attrDef] of Object.entries(
-          model.schema.attributes,
-        )) {
+        for (const [attrName, attrDef] of Object.entries(model.schema.attributes)) {
           const def = attrDef as any;
           const attributeDef: AttributeDefinition = {
             type: def.type || "string",
@@ -135,7 +129,9 @@ export async function buildSchemaCache(
           // ElectroDB stores map properties in properties.attributes
           if (def.type === "map" && def.properties?.attributes) {
             attributeDef.properties = {};
-            for (const [propName, propDef] of Object.entries(def.properties.attributes)) {
+            for (const [propName, propDef] of Object.entries(
+              def.properties.attributes,
+            )) {
               const prop = propDef as any;
               attributeDef.properties[propName] = {
                 type: prop.type || "string",
