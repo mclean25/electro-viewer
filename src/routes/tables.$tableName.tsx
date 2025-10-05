@@ -39,14 +39,28 @@ const getEntitySchemas = createServerFn({
   }));
 });
 
+const getConfigInfo = createServerFn({
+  method: "GET",
+}).handler(async () => {
+  const config = await getConfig();
+  return {
+    region: config.region,
+    profile: config.profile,
+  };
+});
+
 export const Route = createFileRoute("/tables/$tableName")({
   component: TableLayout,
   pendingComponent: TableLayoutPending,
   ssr: "data-only",
   staleTime: 60_000, // Cache for 1 minute
   loader: async ({ params }) => {
-    const [tables, entities] = await Promise.all([listTables(), getEntitySchemas()]);
-    return { tables, entities, tableName: params.tableName };
+    const [tables, entities, configInfo] = await Promise.all([
+      listTables(),
+      getEntitySchemas(),
+      getConfigInfo(),
+    ]);
+    return { tables, entities, tableName: params.tableName, configInfo };
   },
 });
 
@@ -83,11 +97,17 @@ function TableLayoutPending() {
 }
 
 function TableLayout() {
-  const { tables, entities, tableName } = Route.useLoaderData();
+  const { tables, entities, tableName, configInfo } = Route.useLoaderData();
 
   return (
     <div className="flex">
-      <SideNav currentTable={tableName} tables={tables} entities={entities} />
+      <SideNav
+        currentTable={tableName}
+        tables={tables}
+        entities={entities}
+        region={configInfo.region}
+        profile={configInfo.profile}
+      />
       <div className="ml-64 flex-1">
         <div className="container mx-auto py-8 px-8 font-mono">
           <Outlet />
