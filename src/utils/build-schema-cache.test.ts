@@ -16,7 +16,7 @@ describe("buildSchemaCache", () => {
     expect(company?.version).toBe("1");
     expect(company?.service).toBe("model");
 
-    // Check primary index
+    // Check primary index (should be named "primary")
     expect(company?.indexes.primary).toBeDefined();
     expect(company?.indexes.primary.pk.field).toBe("pk");
     expect(company?.indexes.primary.pk.composite).toEqual([]);
@@ -42,19 +42,19 @@ describe("buildSchemaCache", () => {
     expect(fileModel?.service).toBe("model");
 
     // Check primary index
-    expect(fileModel?.indexes.primary).toBeDefined();
-    expect(fileModel?.indexes.primary.pk.field).toBe("pk");
-    expect(fileModel?.indexes.primary.pk.composite).toEqual(["companyId"]);
+    expect(fileModel?.indexes["primary"]).toBeDefined();
+    expect(fileModel?.indexes["primary"].pk.field).toBe("pk");
+    expect(fileModel?.indexes["primary"].pk.composite).toEqual(["companyId"]);
 
-    expect(fileModel?.indexes.primary.sk).toBeDefined();
-    expect(fileModel?.indexes.primary.sk?.field).toBe("sk");
-    expect(fileModel?.indexes.primary.sk?.composite).toEqual(["fileId"]);
+    expect(fileModel?.indexes["primary"].sk).toBeDefined();
+    expect(fileModel?.indexes["primary"].sk?.field).toBe("sk");
+    expect(fileModel?.indexes["primary"].sk?.composite).toEqual(["fileId"]);
 
     // Ensure no null values in composite arrays
-    expect(fileModel?.indexes.primary.pk.composite).not.toContain(null);
-    expect(fileModel?.indexes.primary.pk.composite).not.toContain(undefined);
-    expect(fileModel?.indexes.primary.sk?.composite).not.toContain(null);
-    expect(fileModel?.indexes.primary.sk?.composite).not.toContain(undefined);
+    expect(fileModel?.indexes["primary"].pk.composite).not.toContain(null);
+    expect(fileModel?.indexes["primary"].pk.composite).not.toContain(undefined);
+    expect(fileModel?.indexes["primary"].sk?.composite).not.toContain(null);
+    expect(fileModel?.indexes["primary"].sk?.composite).not.toContain(undefined);
   });
 
   it("should parse CompanyModel entity with GSI correctly", async () => {
@@ -69,13 +69,13 @@ describe("buildSchemaCache", () => {
     expect(companyModel?.service).toBe("model");
 
     // Check primary index
-    expect(companyModel?.indexes.primary).toBeDefined();
-    expect(companyModel?.indexes.primary.pk.field).toBe("pk");
-    expect(companyModel?.indexes.primary.pk.composite).toEqual(["companyId"]);
+    expect(companyModel?.indexes["primary"]).toBeDefined();
+    expect(companyModel?.indexes["primary"].pk.field).toBe("pk");
+    expect(companyModel?.indexes["primary"].pk.composite).toEqual(["companyId"]);
 
-    expect(companyModel?.indexes.primary.sk).toBeDefined();
-    expect(companyModel?.indexes.primary.sk?.field).toBe("sk");
-    expect(companyModel?.indexes.primary.sk?.composite).toEqual(["createdAt"]);
+    expect(companyModel?.indexes["primary"].sk).toBeDefined();
+    expect(companyModel?.indexes["primary"].sk?.field).toBe("sk");
+    expect(companyModel?.indexes["primary"].sk?.composite).toEqual(["createdAt"]);
 
     // Check GSI
     expect(companyModel?.indexes.byStatus).toBeDefined();
@@ -87,8 +87,8 @@ describe("buildSchemaCache", () => {
     expect(companyModel?.indexes.byStatus.sk?.composite).toEqual(["status", "createdAt"]);
 
     // Ensure no null values in composite arrays
-    expect(companyModel?.indexes.primary.pk.composite).not.toContain(null);
-    expect(companyModel?.indexes.primary.sk?.composite).not.toContain(null);
+    expect(companyModel?.indexes["primary"].pk.composite).not.toContain(null);
+    expect(companyModel?.indexes["primary"].sk?.composite).not.toContain(null);
     expect(companyModel?.indexes.byStatus.pk.composite).not.toContain(null);
     expect(companyModel?.indexes.byStatus.sk?.composite).not.toContain(null);
   });
@@ -106,17 +106,42 @@ describe("buildSchemaCache", () => {
     expect(entityNames).toContain("companyModel");
   });
 
-  it("should extract attributes correctly", async () => {
+  it("should extract attributes with full metadata", async () => {
     const cache = await buildSchemaCache([
       "test/dynamo/service.ts",
     ]);
 
     const company = cache.entities.find((e) => e.name === "company");
     expect(company?.attributes).toBeDefined();
-    expect(company?.attributes).toContain("companyId");
-    expect(company?.attributes).toContain("companyName");
-    expect(company?.attributes).toContain("createdAt");
-    expect(company?.attributes).toContain("updatedAt");
+
+    // Check attribute names are present
+    expect(company?.attributes.companyId).toBeDefined();
+    expect(company?.attributes.companyName).toBeDefined();
+    expect(company?.attributes.createdAt).toBeDefined();
+    expect(company?.attributes.updatedAt).toBeDefined();
+
+    // Check attribute metadata
+    expect(company?.attributes.companyId.type).toBe("string");
+    expect(company?.attributes.companyId.required).toBe(true);
+    expect(company?.attributes.companyId.readonly).toBe(true);
+
+    expect(company?.attributes.companyName.type).toBe("string");
+    expect(company?.attributes.companyName.required).toBe(true);
+
+    expect(company?.attributes.fileCount.type).toBe("number");
+    expect(company?.attributes.fileCount.required).toBe(true);
+    expect(company?.attributes.fileCount.default).toBeDefined();
+
+    // Check map type with properties
+    expect(company?.attributes.publicCompanyInfo.type).toBe("map");
+    expect(company?.attributes.publicCompanyInfo.properties).toBeDefined();
+    expect(company?.attributes.publicCompanyInfo.properties?.cik).toBeDefined();
+    expect(company?.attributes.publicCompanyInfo.properties?.cik.type).toBe("string");
+    expect(company?.attributes.publicCompanyInfo.properties?.cik.required).toBe(true);
+
+    // Check set type
+    expect(company?.attributes.modifiedBy.type).toBe("set");
+    expect(company?.attributes.modifiedBy.items).toBe("string");
   });
 
   it("should ensure no null/undefined values in any composite arrays", async () => {

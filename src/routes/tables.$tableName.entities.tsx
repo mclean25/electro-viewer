@@ -138,13 +138,13 @@ function EntitiesViewer() {
 			enableSorting: false,
 			cell: (info) => {
 				const schema = info.row.original;
-				const primaryIndex = schema.indexes.primary;
-				if (!primaryIndex) return "N/A";
+				const firstIndex = schema.indexes[Object.keys(schema.indexes)[0]];
+				if (!firstIndex) return "N/A";
 				return (
 					<code>
 						{formatKeyPattern(
-							primaryIndex.pk.composite,
-							primaryIndex.pk.template,
+							firstIndex.pk.composite,
+							firstIndex.pk.template,
 							`$\{${schema.service}}`,
 						)}
 					</code>
@@ -157,13 +157,13 @@ function EntitiesViewer() {
 			enableSorting: false,
 			cell: (info) => {
 				const schema = info.row.original;
-				const primaryIndex = schema.indexes.primary;
-				if (!primaryIndex?.sk) return "N/A";
+				const firstIndex = schema.indexes[Object.keys(schema.indexes)[0]];
+				if (!firstIndex?.sk) return "N/A";
 				return (
 					<code>
 						{formatKeyPattern(
-							primaryIndex.sk.composite,
-							primaryIndex.sk.template,
+							firstIndex.sk.composite,
+							firstIndex.sk.template,
 							`$\{${schema.name}}_$\{${schema.version}}`,
 						)}
 					</code>
@@ -173,7 +173,7 @@ function EntitiesViewer() {
 		columnHelper.accessor("attributes", {
 			header: "No. of Fields",
 			enableSorting: true,
-			cell: (info) => info.getValue().length,
+			cell: (info) => Object.keys(info.getValue()).length,
 		}),
 	];
 

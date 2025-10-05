@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
@@ -169,13 +169,16 @@ function EntityDetailPending() {
 
 function EntityDetail() {
 	const { entityName, tableName, schema } = Route.useLoaderData();
-	const [selectedIndex, setSelectedIndex] = useState("primary");
+	const [selectedIndex, setSelectedIndex] = useState(
+		Object.keys(schema.indexes)[0] || "primary",
+	);
 	const [pkValues, setPkValues] = useState<Record<string, string>>({});
 	const [skValues, setSkValues] = useState<Record<string, string>>({});
 	const [queryResult, setQueryResult] = useState<any>(null);
 	const [isQuerying, setIsQuerying] = useState(false);
 
 	const currentIndex = schema.indexes[selectedIndex];
+	const isPrimaryIndex = currentIndex?.pk?.field === "pk";
 
 	const handleQuery = async () => {
 		setIsQuerying(true);
@@ -213,7 +216,7 @@ function EntityDetail() {
 				data: {
 					pk,
 					sk,
-					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
+					indexName: isPrimaryIndex ? undefined : selectedIndex,
 					entityName: schema.name,
 					tableName,
 				},
@@ -225,7 +228,7 @@ function EntityDetail() {
 				queryKeys: {
 					pk,
 					sk,
-					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
+					indexName: isPrimaryIndex ? undefined : selectedIndex,
 				},
 			});
 		} catch (error) {
@@ -248,7 +251,7 @@ function EntityDetail() {
 								schema,
 							)
 						: undefined,
-					indexName: selectedIndex === "primary" ? undefined : selectedIndex,
+					indexName: isPrimaryIndex ? undefined : selectedIndex,
 				},
 			});
 		} finally {
@@ -258,7 +261,15 @@ function EntityDetail() {
 
 	return (
 		<div>
-			<h1 className="mb-2 text-xl font-bold">Entity: {entityName}</h1>
+			<div className="flex items-center justify-between mb-2">
+				<h1 className="text-xl font-bold">Entity: {entityName}</h1>
+				<Link
+					to="/tables/$tableName/entity/$entityName/insert"
+					params={{ tableName, entityName }}
+				>
+					<Button>Insert Record</Button>
+				</Link>
+			</div>
 			<p className="mb-2 text-muted-foreground">
 				Version: {schema.version} | Service: {schema.service} | Table:{" "}
 				{tableName}
@@ -282,11 +293,14 @@ function EntityDetail() {
 					}}
 					className="rounded border bg-background p-2 text-sm"
 				>
-					{Object.keys(schema.indexes).map((indexName) => (
-						<option key={indexName} value={indexName}>
-							{indexName} {indexName !== "primary" && "(GSI)"}
-						</option>
-					))}
+					{Object.keys(schema.indexes).map((indexName) => {
+						const isGSI = schema.indexes[indexName].pk.field !== "pk";
+						return (
+							<option key={indexName} value={indexName}>
+								{indexName} {isGSI && "(GSI)"}
+							</option>
+						);
+					})}
 				</select>
 			</div>
 

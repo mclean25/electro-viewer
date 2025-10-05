@@ -8,6 +8,15 @@ import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadTypeScriptFiles } from "./load-typescript";
 
+export interface AttributeDefinition {
+  type: string; // 'string', 'number', 'boolean', 'map', 'list', 'set', etc.
+  required?: boolean;
+  readonly?: boolean;
+  default?: any;
+  properties?: Record<string, AttributeDefinition>; // For map types
+  items?: string | AttributeDefinition; // For list/set types
+}
+
 export interface EntitySchema {
   name: string;
   version: string;
@@ -27,7 +36,7 @@ export interface EntitySchema {
       };
     };
   };
-  attributes: string[];
+  attributes: Record<string, AttributeDefinition>;
 }
 
 export interface SchemaCache {
@@ -70,86 +79,84 @@ export async function buildSchemaCache(
       const model = (entity as any).model;
       const indexes: EntitySchema["indexes"] = {};
 
-      // Extract primary index
-      let primaryIndex = model.indexes?.primary;
-      let primaryIndexName = "primary";
-
-      // If no "primary" index, find the index without an "index" property
-      if (!primaryIndex && model.indexes) {
+      // Extract all indexes uniformly
+      if (model.indexes) {
         for (const [indexName, indexDef] of Object.entries(model.indexes)) {
           const idx = indexDef as any;
-          if (!idx.index) {
-            primaryIndex = idx;
-            primaryIndexName = indexName;
-            break;
+          indexes[indexName] = {
+            pk: {
+              field: idx.pk?.field || "pk",
+              composite:
+                idx.pk?.facets ||
+                idx.pk?.composite ||
+                [],
+              template:
+                model.prefixes?.[indexName]?.pk?.prefix ||
+                model.prefixes?.[""]?.pk?.prefix ||
+                "",
+            },
+          };
+
+          if (idx.sk) {
+            indexes[indexName].sk = {
+              field: idx.sk?.field || "sk",
+              composite:
+                idx.sk?.facets ||
+                idx.sk?.composite ||
+                [],
+              template:
+                model.prefixes?.[indexName]?.sk?.prefix ||
+                model.prefixes?.[""]?.sk?.prefix ||
+                "",
+            };
           }
         }
       }
 
-      if (primaryIndex) {
-        indexes.primary = {
-          pk: {
-            field: primaryIndex.pk.field || "pk",
-            composite:
-              primaryIndex.pk.facets ||
-              primaryIndex.pk.composite ||
-              [],
-            template:
-              model.prefixes?.[primaryIndexName]?.pk?.prefix ||
-              model.prefixes?.[""]?.pk?.prefix ||
-              "",
-          },
-        };
-
-        if (primaryIndex.sk) {
-          indexes.primary.sk = {
-            field: primaryIndex.sk.field || "sk",
-            composite:
-              primaryIndex.sk.facets ||
-              primaryIndex.sk.composite ||
-              [],
-            template:
-              model.prefixes?.[primaryIndexName]?.sk?.prefix ||
-              model.prefixes?.[""]?.sk?.prefix ||
-              "",
+      // Extract attributes with full metadata
+      const attributes: Record<string, AttributeDefinition> = {};
+      if (model.schema?.attributes) {
+        for (const [attrName, attrDef] of Object.entries(
+          model.schema.attributes,
+        )) {
+          const def = attrDef as any;
+          const attributeDef: AttributeDefinition = {
+            type: def.type || "string",
+            required: def.required,
+            readonly: def.readonly || def.readOnly,
           };
-        }
-      }
 
-      // Extract GSI indexes
-      if (model.indexes) {
-        for (const [indexName, indexDef] of Object.entries(model.indexes)) {
-          if (indexName !== "primary") {
-            const idx = indexDef as any;
-            indexes[indexName] = {
-              pk: {
-                field: idx.pk?.field || `${indexName}pk`,
-                composite:
-                  idx.pk?.facets ||
-                  idx.pk?.composite ||
-                  [],
-                template: "",
-              },
-            };
+          // Include default value if present
+          if (def.default !== undefined) {
+            attributeDef.default = def.default;
+          }
 
-            if (idx.sk) {
-              indexes[indexName].sk = {
-                field: idx.sk?.field || `${indexName}sk`,
-                composite:
-                  idx.sk?.facets ||
-                  idx.sk?.composite ||
-                  [],
-                template: "",
+          // Handle map types with nested properties
+          // ElectroDB stores map properties in properties.attributes
+          if (def.type === "map" && def.properties?.attributes) {
+            attributeDef.properties = {};
+            for (const [propName, propDef] of Object.entries(def.properties.attributes)) {
+              const prop = propDef as any;
+              attributeDef.properties[propName] = {
+                type: prop.type || "string",
+                required: prop.required,
+                readonly: prop.readOnly || prop.readonly,
               };
             }
           }
-        }
-      }
 
-      // Extract attributes
-      const attributes: string[] = [];
-      if (model.schema?.attributes) {
-        attributes.push(...Object.keys(model.schema.attributes));
+          // Handle list/set types
+          if ((def.type === "list" || def.type === "set") && def.items) {
+            // ElectroDB may store items as a type string or as an object
+            if (typeof def.items === "string") {
+              attributeDef.items = def.items;
+            } else if (def.items.type) {
+              attributeDef.items = def.items.type;
+            }
+          }
+
+          attributes[attrName] = attributeDef;
+        }
       }
 
       schemas.push({
