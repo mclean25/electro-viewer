@@ -1,7 +1,6 @@
 /// <reference types="vite/client" />
 import type { ReactNode } from "react";
 import { Outlet, createRootRoute, HeadContent, Scripts } from "@tanstack/react-router";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import "../index.css";
 
 export const Route = createRootRoute({
@@ -33,9 +32,6 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <RootDocument>
-      <div className="fixed right-4 top-4 z-50">
-        <ThemeToggle />
-      </div>
       <Outlet />
     </RootDocument>
   );
@@ -43,7 +39,7 @@ function RootComponent() {
 
 function RootDocument({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark">
       <head>
         <HeadContent />
       </head>
