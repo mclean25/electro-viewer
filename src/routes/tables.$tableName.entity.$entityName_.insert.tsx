@@ -5,6 +5,7 @@ import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
+import { useForm } from "@tanstack/react-form";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
 import { Button } from "@/components/ui/button";
@@ -128,8 +129,6 @@ export const Route = createFileRoute(
 function InsertRecord() {
   const { entityName, tableName, schema } = Route.useLoaderData();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState<Record<string, any>>({});
-  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<any>(null);
 
@@ -181,118 +180,66 @@ function InsertRecord() {
     (name) => !schema.attributes[name].required,
   );
 
-  const handleChange = (name: string, value: any) => {
-    setFormData({ ...formData, [name]: value });
-    // Clear error for this field
-    if (errors[name]) {
-      setErrors({ ...errors, [name]: "" });
-    }
-  };
+  const form = useForm({
+    defaultValues: {} as Record<string, any>,
+    onSubmit: async ({ value: formData }) => {
+      setIsSubmitting(true);
+      setSubmitResult(null);
 
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    // Validate all index key fields (required for ElectroDB)
-    for (const fieldName of allIndexKeyFields) {
-      if (!formData[fieldName] || formData[fieldName] === "") {
-        newErrors[fieldName] = "This field is required (used in index keys)";
-      }
-    }
-
-    // Validate other required fields
-    for (const attrName of Object.keys(schema.attributes)) {
-      const attr = schema.attributes[attrName];
-      if (attr.required && !allIndexKeyFields.has(attrName) && !formData[attrName]) {
-        newErrors[attrName] = "This field is required";
-      }
-    }
-
-    // Validate JSON fields (map, list, set)
-    for (const [attrName, value] of Object.entries(formData)) {
-      const attr = schema.attributes[attrName];
-      if (
-        attr &&
-        (attr.type === "map" || attr.type === "list" || attr.type === "set")
-      ) {
-        if (typeof value === "string" && value.trim() !== "") {
-          try {
-            JSON.parse(value);
-          } catch (e) {
-            newErrors[attrName] = "Invalid JSON format";
+      try {
+        // Parse JSON fields
+        const processedData: Record<string, any> = {};
+        for (const [attrName, value] of Object.entries(formData)) {
+          const attr = schema.attributes[attrName];
+          if (
+            attr &&
+            (attr.type === "map" || attr.type === "list" || attr.type === "set")
+          ) {
+            if (typeof value === "string" && value.trim() !== "") {
+              processedData[attrName] = JSON.parse(value);
+            }
+          } else if (attr && attr.type === "number") {
+            processedData[attrName] = value ? Number(value) : undefined;
+          } else if (attr && attr.type === "boolean") {
+            processedData[attrName] = value;
+          } else {
+            processedData[attrName] = value;
           }
         }
-      }
-    }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
+        const result = await insertRecord({
+          data: {
+            item: processedData,
+            entityName,
+            tableName,
+          },
+        });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+        setSubmitResult(result);
 
-    if (!validateForm()) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitResult(null);
-
-    try {
-      // Parse JSON fields
-      const processedData: Record<string, any> = {};
-      for (const [attrName, value] of Object.entries(formData)) {
-        const attr = schema.attributes[attrName];
-        if (
-          attr &&
-          (attr.type === "map" || attr.type === "list" || attr.type === "set")
-        ) {
-          if (typeof value === "string" && value.trim() !== "") {
-            processedData[attrName] = JSON.parse(value);
-          }
-        } else if (attr && attr.type === "number") {
-          processedData[attrName] = value ? Number(value) : undefined;
-        } else if (attr && attr.type === "boolean") {
-          processedData[attrName] = value;
-        } else {
-          processedData[attrName] = value;
+        if (result.success) {
+          // Navigate back to entity detail page after 2 seconds
+          setTimeout(() => {
+            navigate({
+              to: "/tables/$tableName/entity/$entityName",
+              params: { tableName, entityName },
+            });
+          }, 2000);
         }
+      } catch (error) {
+        console.error("Submit error:", error);
+        setSubmitResult({
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      } finally {
+        setIsSubmitting(false);
       }
-
-      const result = await insertRecord({
-        data: {
-          item: processedData,
-          entityName,
-          tableName,
-        },
-      });
-
-      setSubmitResult(result);
-
-      if (result.success) {
-        // Navigate back to entity detail page after 2 seconds
-        setTimeout(() => {
-          navigate({
-            to: "/tables/$tableName/entity/$entityName",
-            params: { tableName, entityName },
-          });
-        }, 2000);
-      }
-    } catch (error) {
-      console.error("Submit error:", error);
-      setSubmitResult({
-        success: false,
-        error: error instanceof Error ? error.message : "Unknown error",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+  });
 
   const renderField = (attrName: string, isRequired: boolean, isKeyField = false) => {
     const attr = schema.attributes[attrName];
-    const value = formData[attrName] ?? "";
-    const error = errors[attrName];
 
     // Skip readonly fields UNLESS they're key fields (PK/SK composites)
     // Key fields need to be provided for insert even if marked readonly
@@ -303,58 +250,106 @@ function InsertRecord() {
     // All index key fields are effectively required
     const isEffectivelyRequired = isRequired || allIndexKeyFields.has(attrName);
 
+    // Validation function
+    const validate = (value: any) => {
+      // Check required fields
+      if (isEffectivelyRequired && (!value || value === "")) {
+        return allIndexKeyFields.has(attrName)
+          ? "This field is required (used in index keys)"
+          : "This field is required";
+      }
+
+      // Validate JSON fields
+      if (
+        (attr.type === "map" || attr.type === "list" || attr.type === "set") &&
+        typeof value === "string" &&
+        value.trim() !== ""
+      ) {
+        try {
+          JSON.parse(value);
+        } catch (e) {
+          return "Invalid JSON format";
+        }
+      }
+
+      return undefined;
+    };
+
     return (
-      <div key={attrName} className="space-y-2">
-        <Label htmlFor={attrName}>
-          {attrName}
-          {isEffectivelyRequired && <span className="text-red-500 ml-1">*</span>}
-          <span className="text-xs text-muted-foreground ml-2">
-            ({attr.type})
-          </span>
-        </Label>
-        {attr.type === "boolean" ? (
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={attrName}
-              checked={value === true}
-              onCheckedChange={(checked) =>
-                handleChange(attrName, checked === true)
-              }
-            />
-            <label
-              htmlFor={attrName}
-              className="text-sm text-muted-foreground cursor-pointer"
-            >
-              {value ? "True" : "False"}
-            </label>
+      <form.Field
+        key={attrName}
+        name={attrName}
+        validators={{
+          onChange: ({ value }) => validate(value),
+        }}
+        children={(field) => (
+          <div className="space-y-2">
+            <Label htmlFor={attrName}>
+              {attrName}
+              {isEffectivelyRequired && (
+                <span className="text-red-500 ml-1">*</span>
+              )}
+              <span className="text-xs text-muted-foreground ml-2">
+                ({attr.type})
+              </span>
+            </Label>
+            {attr.type === "boolean" ? (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={attrName}
+                  checked={field.state.value === true}
+                  onCheckedChange={(checked) =>
+                    field.handleChange(checked === true)
+                  }
+                />
+                <label
+                  htmlFor={attrName}
+                  className="text-sm text-muted-foreground cursor-pointer"
+                >
+                  {field.state.value ? "True" : "False"}
+                </label>
+              </div>
+            ) : attr.type === "map" ||
+              attr.type === "list" ||
+              attr.type === "set" ? (
+              <Textarea
+                id={attrName}
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder={`Enter ${attr.type} as JSON`}
+                className={
+                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
+                }
+              />
+            ) : attr.type === "number" ? (
+              <Input
+                id={attrName}
+                type="number"
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={
+                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
+                }
+              />
+            ) : (
+              <Input
+                id={attrName}
+                type="text"
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={
+                  field.state.meta.errors.length > 0 ? "border-red-500" : ""
+                }
+              />
+            )}
+            {field.state.meta.errors.length > 0 && (
+              <p className="text-xs text-red-500">
+                {field.state.meta.errors.join(", ")}
+              </p>
+            )}
           </div>
-        ) : attr.type === "map" || attr.type === "list" || attr.type === "set" ? (
-          <Textarea
-            id={attrName}
-            value={value}
-            onChange={(e) => handleChange(attrName, e.target.value)}
-            placeholder={`Enter ${attr.type} as JSON`}
-            className={error ? "border-red-500" : ""}
-          />
-        ) : attr.type === "number" ? (
-          <Input
-            id={attrName}
-            type="number"
-            value={value}
-            onChange={(e) => handleChange(attrName, e.target.value)}
-            className={error ? "border-red-500" : ""}
-          />
-        ) : (
-          <Input
-            id={attrName}
-            type="text"
-            value={value}
-            onChange={(e) => handleChange(attrName, e.target.value)}
-            className={error ? "border-red-500" : ""}
-          />
         )}
-        {error && <p className="text-xs text-red-500">{error}</p>}
-      </div>
+      />
     );
   };
 
@@ -366,7 +361,14 @@ function InsertRecord() {
         {schema.service}
       </p>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className="space-y-6"
+      >
         {/* PK/SK Fields Section */}
         <div className="rounded border bg-muted/30 p-4 space-y-4">
           <h3 className="text-sm font-semibold">Primary Key Fields</h3>

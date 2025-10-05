@@ -9,6 +9,7 @@ import {
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
 import * as path from "node:path";
+import { useForm } from "@tanstack/react-form";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -172,92 +173,97 @@ function EntityDetail() {
 	const [selectedIndex, setSelectedIndex] = useState(
 		Object.keys(schema.indexes)[0] || "primary",
 	);
-	const [pkValues, setPkValues] = useState<Record<string, string>>({});
-	const [skValues, setSkValues] = useState<Record<string, string>>({});
 	const [queryResult, setQueryResult] = useState<any>(null);
 	const [isQuerying, setIsQuerying] = useState(false);
 
 	const currentIndex = schema.indexes[selectedIndex];
 	const isPrimaryIndex = currentIndex?.pk?.field === "pk";
 
-	const handleQuery = async () => {
-		setIsQuerying(true);
-		setQueryResult(null);
+	const form = useForm({
+		defaultValues: {
+			pkValues: {} as Record<string, string>,
+			skValues: {} as Record<string, string>,
+		},
+		onSubmit: async ({ value }) => {
+			setIsQuerying(true);
+			setQueryResult(null);
 
-		try {
-			// Build PK using ElectroDB logic
-			let pk = buildElectroDBKey(
-				true,
-				currentIndex.pk.composite,
-				pkValues,
-				schema,
-			);
-
-			// Build SK if present using ElectroDB logic
-			let sk: string | undefined = undefined;
-			if (currentIndex.sk) {
-				const skKey = buildElectroDBKey(
-					false,
-					currentIndex.sk.composite,
-					skValues,
+			try {
+				// Build PK using ElectroDB logic
+				let pk = buildElectroDBKey(
+					true,
+					currentIndex.pk.composite,
+					value.pkValues,
 					schema,
 				);
-				// Only include SK if it has meaningful values (not just the static template)
-				// Check if any SK values were actually provided
-				const hasSkValues = currentIndex.sk.composite.some(
-					(field) => skValues[field] && skValues[field].trim() !== "",
-				);
-				if (hasSkValues || currentIndex.sk.composite.length === 0) {
-					sk = skKey;
-				}
-			}
 
-			const result = await queryDynamoDB({
-				data: {
-					pk,
-					sk,
-					indexName: isPrimaryIndex ? undefined : selectedIndex,
-					entityName: schema.name,
-					tableName,
-				},
-			});
-
-			// Add the actual query keys to the result for display
-			setQueryResult({
-				...result,
-				queryKeys: {
-					pk,
-					sk,
-					indexName: isPrimaryIndex ? undefined : selectedIndex,
-				},
-			});
-		} catch (error) {
-			console.error("Query error:", error);
-			setQueryResult({
-				success: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-				queryKeys: {
-					pk: buildElectroDBKey(
-						true,
-						currentIndex.pk.composite,
-						pkValues,
+				// Build SK if present using ElectroDB logic
+				let sk: string | undefined = undefined;
+				if (currentIndex.sk) {
+					const skKey = buildElectroDBKey(
+						false,
+						currentIndex.sk.composite,
+						value.skValues,
 						schema,
-					),
-					sk: currentIndex.sk
-						? buildElectroDBKey(
-								false,
-								currentIndex.sk.composite,
-								skValues,
-								schema,
-							)
-						: undefined,
-					indexName: isPrimaryIndex ? undefined : selectedIndex,
-				},
-			});
-		} finally {
-			setIsQuerying(false);
-		}
-	};
+					);
+					// Only include SK if it has meaningful values (not just the static template)
+					// Check if any SK values were actually provided
+					const hasSkValues = currentIndex.sk.composite.some(
+						(field) =>
+							value.skValues[field] && value.skValues[field].trim() !== "",
+					);
+					if (hasSkValues || currentIndex.sk.composite.length === 0) {
+						sk = skKey;
+					}
+				}
+
+				const result = await queryDynamoDB({
+					data: {
+						pk,
+						sk,
+						indexName: isPrimaryIndex ? undefined : selectedIndex,
+						entityName: schema.name,
+						tableName,
+					},
+				});
+
+				// Add the actual query keys to the result for display
+				setQueryResult({
+					...result,
+					queryKeys: {
+						pk,
+						sk,
+						indexName: isPrimaryIndex ? undefined : selectedIndex,
+					},
+				});
+			} catch (error) {
+				console.error("Query error:", error);
+				setQueryResult({
+					success: false,
+					error: error instanceof Error ? error.message : "Unknown error",
+					queryKeys: {
+						pk: buildElectroDBKey(
+							true,
+							currentIndex.pk.composite,
+							value.pkValues,
+							schema,
+						),
+						sk: currentIndex.sk
+							? buildElectroDBKey(
+									false,
+									currentIndex.sk.composite,
+									value.skValues,
+									schema,
+								)
+							: undefined,
+						indexName: isPrimaryIndex ? undefined : selectedIndex,
+					},
+				});
+			} finally {
+				setIsQuerying(false);
+			}
+		},
+	});
 
 	return (
 		<div>
@@ -287,8 +293,7 @@ function EntityDetail() {
 					value={selectedIndex}
 					onChange={(e) => {
 						setSelectedIndex(e.target.value);
-						setPkValues({});
-						setSkValues({});
+						form.reset();
 						setQueryResult(null);
 					}}
 					className="rounded border bg-background p-2 text-sm"
@@ -304,8 +309,15 @@ function EntityDetail() {
 				</select>
 			</div>
 
-			<div className="mb-5 rounded border bg-muted/50 p-4">
-				<h3 className="text-base font-bold mb-4">Build Query Keys</h3>
+			<form
+				onSubmit={(e) => {
+					e.preventDefault();
+					e.stopPropagation();
+					form.handleSubmit();
+				}}
+			>
+				<div className="mb-5 rounded border bg-muted/50 p-4">
+					<h3 className="text-base font-bold mb-4">Build Query Keys</h3>
 
 				<div className="mb-4">
 					<h4 className="text-sm font-semibold mb-3">
@@ -324,34 +336,46 @@ function EntityDetail() {
 							</div>
 							<div>
 								<span className="text-xs font-medium">Constructed Key:</span>{" "}
-								<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-									{buildElectroDBKey(
-										true,
-										currentIndex.pk.composite,
-										pkValues,
-										schema,
+								<form.Subscribe
+									selector={(state) => state.values.pkValues}
+									children={(pkValues) => (
+										<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
+											{buildElectroDBKey(
+												true,
+												currentIndex.pk.composite,
+												pkValues,
+												schema,
+											)}
+										</code>
 									)}
-								</code>
+								/>
 							</div>
 						</div>
 					) : (
 						<>
 							{currentIndex.pk.composite.map((field) => (
-								<div key={field} className="mb-2">
-									{/** biome-ignore lint/a11y/noLabelWithoutControl: ignore */}
-									<label className="block mb-1 text-xs font-medium">
-										{field}:
-									</label>
-									<Input
-										type="text"
-										value={pkValues[field] || ""}
-										onChange={(e) =>
-											setPkValues({ ...pkValues, [field]: e.target.value })
-										}
-										placeholder={`Enter ${field}`}
-										className="w-80"
-									/>
-								</div>
+								<form.Field
+									key={field}
+									name={`pkValues.${field}`}
+									children={(fieldApi) => (
+										<div className="mb-2">
+											<label
+												htmlFor={`pk-${field}`}
+												className="block mb-1 text-xs font-medium"
+											>
+												{field}:
+											</label>
+											<Input
+												id={`pk-${field}`}
+												type="text"
+												value={fieldApi.state.value || ""}
+												onChange={(e) => fieldApi.handleChange(e.target.value)}
+												placeholder={`Enter ${field}`}
+												className="w-80"
+											/>
+										</div>
+									)}
+								/>
 							))}
 							<div className="mb-2 mt-3">
 								<span className="text-xs font-medium">Key Pattern:</span>{" "}
@@ -362,14 +386,19 @@ function EntityDetail() {
 							</div>
 							<div>
 								<span className="text-xs font-medium">Constructed Key:</span>{" "}
-								<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-									{buildElectroDBKey(
-										true,
-										currentIndex.pk.composite,
-										pkValues,
-										schema,
-									) || "(Enter values to see constructed key)"}
-								</code>
+								<form.Subscribe
+									selector={(state) => state.values.pkValues}
+									children={(pkValues) => (
+										<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
+											{buildElectroDBKey(
+												true,
+												currentIndex.pk.composite,
+												pkValues,
+												schema,
+											) || "(Enter values to see constructed key)"}
+										</code>
+									)}
+								/>
 							</div>
 						</>
 					)}
@@ -393,34 +422,46 @@ function EntityDetail() {
 								</div>
 								<div>
 									<span className="text-xs font-medium">Constructed Key:</span>{" "}
-									<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-										{buildElectroDBKey(
-											false,
-											currentIndex.sk.composite,
-											skValues,
-											schema,
+									<form.Subscribe
+										selector={(state) => state.values.skValues}
+										children={(skValues) => (
+											<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
+												{buildElectroDBKey(
+													false,
+													currentIndex.sk.composite,
+													skValues,
+													schema,
+												)}
+											</code>
 										)}
-									</code>
+									/>
 								</div>
 							</div>
 						) : (
 							<>
 								{currentIndex.sk.composite.map((field) => (
-									<div key={field} className="mb-2">
-										{/** biome-ignore lint/a11y/noLabelWithoutControl: ignore */}
-										<label className="block mb-1 text-xs font-medium">
-											{field}:
-										</label>
-										<Input
-											type="text"
-											value={skValues[field] || ""}
-											onChange={(e) =>
-												setSkValues({ ...skValues, [field]: e.target.value })
-											}
-											placeholder={`Enter ${field}`}
-											className="w-80"
-										/>
-									</div>
+									<form.Field
+										key={field}
+										name={`skValues.${field}`}
+										children={(fieldApi) => (
+											<div className="mb-2">
+												<label
+													htmlFor={`sk-${field}`}
+													className="block mb-1 text-xs font-medium"
+												>
+													{field}:
+												</label>
+												<Input
+													id={`sk-${field}`}
+													type="text"
+													value={fieldApi.state.value || ""}
+													onChange={(e) => fieldApi.handleChange(e.target.value)}
+													placeholder={`Enter ${field}`}
+													className="w-80"
+												/>
+											</div>
+										)}
+									/>
 								))}
 								<div className="mb-2 mt-3">
 									<span className="text-xs font-medium">Key Pattern:</span>{" "}
@@ -431,24 +472,30 @@ function EntityDetail() {
 								</div>
 								<div>
 									<span className="text-xs font-medium">Constructed Key:</span>{" "}
-									<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-										{buildElectroDBKey(
-											false,
-											currentIndex.sk.composite,
-											skValues,
-											schema,
-										) || "(Enter values to see constructed key)"}
-									</code>
+									<form.Subscribe
+										selector={(state) => state.values.skValues}
+										children={(skValues) => (
+											<code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
+												{buildElectroDBKey(
+													false,
+													currentIndex.sk.composite,
+													skValues,
+													schema,
+												) || "(Enter values to see constructed key)"}
+											</code>
+										)}
+									/>
 								</div>
 							</>
 						)}
 					</div>
 				)}
 
-				<Button onClick={handleQuery} disabled={isQuerying}>
-					{isQuerying ? "Querying..." : "Query DynamoDB"}
-				</Button>
-			</div>
+					<Button type="submit" disabled={isQuerying}>
+						{isQuerying ? "Querying..." : "Query DynamoDB"}
+					</Button>
+				</div>
+			</form>
 
 			{queryResult && (
 				<div className="mt-5 rounded border p-4">
