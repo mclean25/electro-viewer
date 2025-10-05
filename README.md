@@ -16,9 +16,10 @@ files in your project.
 ## Roadmap
 
 - [x] Read support
+- [x] Add support
 - [ ] Delete Support
-- [ ] Edit support
-- [ ] Add support
+- [ ] Update support
+- [ ] Scan support
 - [ ] Run arbitrary queries
 - [ ] Query read units used statistics
 
