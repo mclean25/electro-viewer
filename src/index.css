@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import url('https://fonts.googleapis.com/css2?family=Quantico:wght@400;700&display=swap');
 
 @custom-variant dark (&:is(.dark *));
 
@@ -116,5 +117,6 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: 'Quantico', sans-serif;
   }
 }
