@@ -1,10 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
   GetCommand,
   QueryCommand,
+  PutCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { useState } from "react";
@@ -13,12 +14,22 @@ import { useForm } from "@tanstack/react-form";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
 import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
-  // Use CLI config path if available, otherwise use current working directory
   const configPath =
     process.env.ELECTRO_VIEWER_CONFIG_PATH ||
     path.resolve(process.cwd(), "electro-viewer-config.ts");
@@ -58,10 +69,8 @@ const queryDynamoDB = createServerFn({
     const { pk, sk, pkField, skField, indexName, entityName, tableName } = data;
 
     try {
-      // Load config from current working directory
       const config = await getConfig();
 
-      // Use AWS SDK's fromIni credential provider for SSO profiles
       const client = new DynamoDBClient({
         region: config.region,
         credentials: fromIni({ profile: config.profile }),
@@ -70,7 +79,6 @@ const queryDynamoDB = createServerFn({
       const docClient = DynamoDBDocumentClient.from(client);
 
       if (sk && skField) {
-        // Use GetItem for exact match
         const command = new GetCommand({
           TableName: tableName,
           Key: {
@@ -86,7 +94,6 @@ const queryDynamoDB = createServerFn({
           count: result.Item ? 1 : 0,
         };
       } else {
-        // Use Query for PK-only queries with entity filter
         const queryParams: any = {
           TableName: tableName,
           IndexName: indexName,
@@ -96,8 +103,6 @@ const queryDynamoDB = createServerFn({
           },
         };
 
-        // Add entity filter when entityName is provided
-        // This is to filter for relevant results when the PK contains other items
         if (entityName) {
           queryParams.FilterExpression = "#edb_e = :entityName";
           queryParams.ExpressionAttributeNames = { "#edb_e": "__edb_e__" };
@@ -123,11 +128,80 @@ const queryDynamoDB = createServerFn({
     }
   });
 
+// Server function to insert record
+const insertRecord = createServerFn({
+  method: "POST",
+})
+  .validator(
+    (params: { item: Record<string, any>; entityName: string; tableName: string }) =>
+      params,
+  )
+  .handler(async ({ data }) => {
+    const { item, entityName, tableName } = data;
+
+    try {
+      const config = await getConfig();
+      const cache = loadSchemaCache();
+      const schema = cache.entities.find((e) => e.name === entityName);
+
+      if (!schema) {
+        throw new Error(`Entity '${entityName}' not found in schema cache`);
+      }
+
+      const itemToInsert: Record<string, any> = {
+        ...item,
+        __edb_e__: schema.name,
+        __edb_v__: schema.version,
+      };
+
+      for (const [indexName, indexDef] of Object.entries(schema.indexes)) {
+        const pkValue = buildElectroDBKey(true, indexDef.pk.composite, item, schema);
+        itemToInsert[indexDef.pk.field] = pkValue;
+
+        if (indexDef.sk) {
+          const skValue = buildElectroDBKey(false, indexDef.sk.composite, item, schema);
+          itemToInsert[indexDef.sk.field] = skValue;
+        }
+      }
+
+      const client = new DynamoDBClient({
+        region: config.region,
+        credentials: fromIni({ profile: config.profile }),
+      });
+
+      const docClient = DynamoDBDocumentClient.from(client);
+
+      const command = new PutCommand({
+        TableName: tableName,
+        Item: itemToInsert,
+      });
+
+      await docClient.send(command);
+
+      return {
+        success: true,
+        item: itemToInsert,
+      };
+    } catch (error: any) {
+      console.error("DynamoDB insert error:", error);
+      return {
+        success: false,
+        error: error.message || "Unknown error occurred",
+        errorType: error.name || "UnknownError",
+      };
+    }
+  });
+
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
   component: EntityDetail,
   pendingComponent: EntityDetailPending,
   ssr: "data-only",
-  staleTime: 60_000, // Cache for 1 minute
+  staleTime: 60_000,
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      tab: (search.tab as string) || "query",
+    };
+  },
   loader: async ({ params }) => {
     const schema = await getEntitySchema({ data: params.entityName });
     return {
@@ -172,13 +246,73 @@ function EntityDetailPending() {
 
 function EntityDetail() {
   const { entityName, tableName, schema } = Route.useLoaderData();
-  const [selectedIndex, setSelectedIndex] = useState(
-    Object.keys(schema.indexes)[0] || "primary",
+  const navigate = useNavigate();
+  const search = Route.useSearch();
+  const currentTab = search.tab || "query";
+
+  const handleTabChange = (value: string) => {
+    navigate({
+      search: { tab: value },
+    });
+  };
+
+  return (
+    <div>
+      <h1 className="text-2xl font-bold mb-1">
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground">Entity</span>
+          <span className="text-muted-foreground">/</span>
+          <span className="text-primary">{entityName}</span>
+        </div>
+      </h1>
+      <div className="flex gap-4 mb-1 text-sm">
+        <span>
+          <span className="text-muted-foreground">Version</span> {schema.version}
+        </span>
+        <span>
+          <span className="text-muted-foreground">Service</span> {schema.service}
+        </span>
+        <span>
+          <span className="text-muted-foreground">Table</span> {tableName}
+        </span>
+      </div>
+      <p className="mb-6 text-sm text-muted-foreground">
+        <code className="rounded bg-card px-1 py-0.5">{schema.sourceFile}</code>
+      </p>
+
+      <Tabs value={currentTab} onValueChange={handleTabChange}>
+        <TabsList>
+          <TabsTrigger value="query">query</TabsTrigger>
+          <TabsTrigger value="insert">insert</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="query">
+          <QueryTab schema={schema} tableName={tableName} entityName={entityName} />
+        </TabsContent>
+
+        <TabsContent value="insert">
+          <InsertTab schema={schema} tableName={tableName} entityName={entityName} />
+        </TabsContent>
+      </Tabs>
+    </div>
   );
+}
+
+function QueryTab({
+  schema,
+  tableName,
+  entityName,
+}: {
+  schema: any;
+  tableName: string;
+  entityName: string;
+}) {
+  const firstIndex = Object.keys(schema.indexes)[0];
+  const [selectedIndex, setSelectedIndex] = useState(firstIndex);
   const [queryResult, setQueryResult] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
 
-  const currentIndex = schema.indexes[selectedIndex];
+  const currentIndex = schema.indexes[selectedIndex] || schema.indexes[firstIndex];
   const isPrimaryIndex = currentIndex?.pk?.field === "pk";
 
   const form = useForm({
@@ -191,7 +325,6 @@ function EntityDetail() {
       setQueryResult(null);
 
       try {
-        // Build PK using ElectroDB logic
         let pk = buildElectroDBKey(
           true,
           currentIndex.pk.composite,
@@ -199,7 +332,6 @@ function EntityDetail() {
           schema,
         );
 
-        // Build SK if present using ElectroDB logic
         let sk: string | undefined = undefined;
         if (currentIndex.sk) {
           const skKey = buildElectroDBKey(
@@ -208,8 +340,6 @@ function EntityDetail() {
             value.skValues,
             schema,
           );
-          // Only include SK if it has meaningful values (not just the static template)
-          // Check if any SK values were actually provided
           const hasSkValues = currentIndex.sk.composite.some(
             (field) => value.skValues[field] && value.skValues[field].trim() !== "",
           );
@@ -230,7 +360,6 @@ function EntityDetail() {
           },
         });
 
-        // Add the actual query keys to the result for display
         setQueryResult({
           ...result,
           queryKeys: {
@@ -269,44 +398,31 @@ function EntityDetail() {
   });
 
   return (
-    <div>
-      <div className="flex items-center justify-between mb-2">
-        <h1 className="text-xl font-bold">Entity: {entityName}</h1>
-        <Link
-          to="/tables/$tableName/entity/$entityName/insert"
-          params={{ tableName, entityName }}
-        >
-          <Button>Insert Record</Button>
-        </Link>
-      </div>
-      <p className="mb-2 text-muted-foreground">
-        Version: {schema.version} | Service: {schema.service} | Table: {tableName}
-      </p>
-      <p className="mb-5 text-sm text-muted-foreground">
-        Source:{" "}
-        <code className="rounded bg-muted px-1 py-0.5">{schema.sourceFile}</code>
-      </p>
-
+    <div className="mt-6 rounded-lg border border-card p-6">
       <div className="mb-5">
-        <h3 className="text-base font-semibold mb-2">Select Index:</h3>
-        <select
+        <h3 className="text-sm font-semibold mb-2">Select Index</h3>
+        <Select
           value={selectedIndex}
-          onChange={(e) => {
-            setSelectedIndex(e.target.value);
+          onValueChange={(value) => {
+            setSelectedIndex(value);
             form.reset();
             setQueryResult(null);
           }}
-          className="rounded border bg-background p-2 text-sm"
         >
-          {Object.keys(schema.indexes).map((indexName) => {
-            const isGSI = schema.indexes[indexName].pk.field !== "pk";
-            return (
-              <option key={indexName} value={indexName}>
-                {indexName} {isGSI && "(GSI)"}
-              </option>
-            );
-          })}
-        </select>
+          <SelectTrigger className="w-64 bg-background">
+            <SelectValue placeholder="Select an index" />
+          </SelectTrigger>
+          <SelectContent>
+            {Object.keys(schema.indexes).map((indexName) => {
+              const isGSI = schema.indexes[indexName].pk.field !== "pk";
+              return (
+                <SelectItem key={indexName} value={indexName}>
+                  {indexName} {isGSI && "(GSI)"}
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
       </div>
 
       <form
@@ -316,192 +432,100 @@ function EntityDetail() {
           form.handleSubmit();
         }}
       >
-        <div className="mb-5 rounded border bg-muted/50 p-4">
-          <h3 className="text-base font-bold mb-4">Build Query Keys</h3>
+        <div className="mb-5">
+          <h3 className="text-sm font-bold mb-4">PK</h3>
 
           <div className="mb-4">
-            <h4 className="text-sm font-semibold mb-3">
-              Partition Key ({currentIndex.pk.field})
-            </h4>
-            {currentIndex.pk.composite.length === 0 ? (
-              <div>
-                <p className="mb-2 text-xs text-muted-foreground">
-                  No composite attributes (static key)
-                </p>
-                <div className="mb-2">
-                  <span className="text-xs font-medium">Key Pattern:</span>{" "}
-                  <code className="rounded border bg-card p-1 text-xs">
-                    ${"{service}"}
-                  </code>
-                </div>
-                <div>
-                  <span className="text-xs font-medium">Constructed Key:</span>{" "}
-                  <form.Subscribe
-                    selector={(state) => state.values.pkValues}
-                    children={(pkValues) => (
-                      <code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-                        {buildElectroDBKey(
-                          true,
-                          currentIndex.pk.composite,
-                          pkValues,
-                          schema,
-                        )}
-                      </code>
-                    )}
-                  />
-                </div>
-              </div>
-            ) : (
-              <>
+            <p className="text-xs text-muted-foreground mb-3">
+              {currentIndex.pk.composite.length === 0
+                ? "No composite attributes (static key)"
+                : ``}
+            </p>
+            {currentIndex.pk.composite.length > 0 && (
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 {currentIndex.pk.composite.map((field) => (
                   <form.Field
                     key={field}
                     name={`pkValues.${field}`}
                     children={(fieldApi) => (
-                      <div className="mb-2">
+                      <div>
                         <label
                           htmlFor={`pk-${field}`}
-                          className="block mb-1 text-xs font-medium"
+                          className="block mb-1 text-xs text-foreground"
                         >
-                          {field}:
+                          <div className="flex items-center gap-2">
+                            {field}
+                            <span className="italic text-muted-foreground-accent">
+                              string
+                            </span>
+                          </div>
                         </label>
                         <Input
                           id={`pk-${field}`}
                           type="text"
                           value={fieldApi.state.value || ""}
                           onChange={(e) => fieldApi.handleChange(e.target.value)}
-                          placeholder={`Enter ${field}`}
-                          className="w-80"
+                          placeholder={field}
+                          className="bg-background"
                         />
                       </div>
                     )}
                   />
                 ))}
-                <div className="mb-2 mt-3">
-                  <span className="text-xs font-medium">Key Pattern:</span>{" "}
-                  <code className="rounded border bg-card p-1 text-xs">
-                    ${"{service}"}#
-                    {currentIndex.pk.composite.map((c) => `{${c}}`).join("#")}
-                  </code>
-                </div>
-                <div>
-                  <span className="text-xs font-medium">Constructed Key:</span>{" "}
-                  <form.Subscribe
-                    selector={(state) => state.values.pkValues}
-                    children={(pkValues) => (
-                      <code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-                        {buildElectroDBKey(
-                          true,
-                          currentIndex.pk.composite,
-                          pkValues,
-                          schema,
-                        ) || "(Enter values to see constructed key)"}
-                      </code>
-                    )}
-                  />
-                </div>
-              </>
+              </div>
             )}
           </div>
 
           {currentIndex.sk && (
             <div className="mb-4">
-              <h4 className="text-sm font-semibold mb-3">
-                Sort Key ({currentIndex.sk.field})
-              </h4>
-              {currentIndex.sk.composite.length === 0 ? (
-                <div>
-                  <p className="mb-2 text-xs text-muted-foreground">
-                    No composite attributes
-                  </p>
-                  <div className="mb-2">
-                    <span className="text-xs font-medium">Key Pattern:</span>{" "}
-                    <code className="rounded border bg-card p-1 text-xs">
-                      ${"{entity}"}_{"{version}"}
-                    </code>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium">Constructed Key:</span>{" "}
-                    <form.Subscribe
-                      selector={(state) => state.values.skValues}
-                      children={(skValues) => (
-                        <code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-                          {buildElectroDBKey(
-                            false,
-                            currentIndex.sk.composite,
-                            skValues,
-                            schema,
-                          )}
-                        </code>
-                      )}
-                    />
-                  </div>
-                </div>
-              ) : (
-                <>
+              <h3 className="text-sm font-bold mb-4">SK</h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                {currentIndex.sk.composite.length === 0
+                  ? "No composite attributes"
+                  : `${currentIndex.sk.field} composites`}
+              </p>
+              {currentIndex.sk.composite.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 mb-4">
                   {currentIndex.sk.composite.map((field) => (
                     <form.Field
                       key={field}
                       name={`skValues.${field}`}
                       children={(fieldApi) => (
-                        <div className="mb-2">
+                        <div>
                           <label
                             htmlFor={`sk-${field}`}
-                            className="block mb-1 text-xs font-medium"
+                            className="block mb-1 text-xs text-muted-foreground"
                           >
-                            {field}:
+                            {field}{" "}
+                            <span className="text-muted-foreground">string</span>
                           </label>
                           <Input
                             id={`sk-${field}`}
                             type="text"
                             value={fieldApi.state.value || ""}
                             onChange={(e) => fieldApi.handleChange(e.target.value)}
-                            placeholder={`Enter ${field}`}
-                            className="w-80"
+                            placeholder={field}
+                            className="bg-background"
                           />
                         </div>
                       )}
                     />
                   ))}
-                  <div className="mb-2 mt-3">
-                    <span className="text-xs font-medium">Key Pattern:</span>{" "}
-                    <code className="rounded border bg-card p-1 text-xs">
-                      ${"{entity}"}_{"{version}"}#
-                      {currentIndex.sk.composite.map((c) => `{${c}}`).join("#")}
-                    </code>
-                  </div>
-                  <div>
-                    <span className="text-xs font-medium">Constructed Key:</span>{" "}
-                    <form.Subscribe
-                      selector={(state) => state.values.skValues}
-                      children={(skValues) => (
-                        <code className="rounded border border-green-500 bg-green-500/10 p-1 text-xs font-semibold text-green-600 dark:border-green-400 dark:bg-green-400/10 dark:text-green-400">
-                          {buildElectroDBKey(
-                            false,
-                            currentIndex.sk.composite,
-                            skValues,
-                            schema,
-                          ) || "(Enter values to see constructed key)"}
-                        </code>
-                      )}
-                    />
-                  </div>
-                </>
+                </div>
               )}
             </div>
           )}
 
           <Button type="submit" disabled={isQuerying}>
-            {isQuerying ? "Querying..." : "Query DynamoDB"}
+            {isQuerying ? "Querying..." : "Query"}
           </Button>
         </div>
       </form>
 
       {queryResult && (
-        <div className="mt-5 rounded border p-4">
+        <div className="mt-5 rounded border p-4 bg-background">
           <h3 className="text-base font-semibold mb-3">Query Result</h3>
 
-          {/* Show the actual query keys used */}
           <div className="mb-4 rounded border border-border bg-muted p-3">
             <h4 className="m-0 mb-2 text-sm font-semibold">Query Keys Used:</h4>
             <div className="font-mono text-xs">
@@ -553,6 +577,298 @@ function EntityDetail() {
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function InsertTab({
+  schema,
+  tableName,
+  entityName,
+}: {
+  schema: any;
+  tableName: string;
+  entityName: string;
+}) {
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitResult, setSubmitResult] = useState<any>(null);
+
+  const primaryIndexName = Object.keys(schema.indexes)[0];
+  const primaryIndex = schema.indexes[primaryIndexName];
+
+  if (!primaryIndex) {
+    return (
+      <div className="mt-6 rounded-lg border bg-card p-6">
+        <p className="text-red-500">Error: No indexes found for this entity</p>
+      </div>
+    );
+  }
+
+  const pkFields = primaryIndex.pk.composite;
+  const skFields = primaryIndex.sk?.composite || [];
+
+  const allIndexKeyFields = new Set<string>();
+  for (const index of Object.values(schema.indexes)) {
+    index.pk.composite.forEach((field) => allIndexKeyFields.add(field));
+    index.sk?.composite.forEach((field) => allIndexKeyFields.add(field));
+  }
+
+  const primaryKeyFieldNames = new Set([...pkFields, ...skFields]);
+
+  const otherIndexKeyFields = Array.from(allIndexKeyFields).filter(
+    (field) => !primaryKeyFieldNames.has(field),
+  );
+
+  const nonKeyFields = Object.keys(schema.attributes).filter(
+    (attrName) => !allIndexKeyFields.has(attrName),
+  );
+
+  const requiredOtherFields = [
+    ...otherIndexKeyFields,
+    ...nonKeyFields.filter((name) => schema.attributes[name].required),
+  ];
+  const optionalOtherFields = nonKeyFields.filter(
+    (name) => !schema.attributes[name].required,
+  );
+
+  const form = useForm({
+    defaultValues: {} as Record<string, any>,
+    onSubmit: async ({ value: formData }) => {
+      setIsSubmitting(true);
+      setSubmitResult(null);
+
+      try {
+        const processedData: Record<string, any> = {};
+        for (const [attrName, value] of Object.entries(formData)) {
+          const attr = schema.attributes[attrName];
+          if (
+            attr &&
+            (attr.type === "map" || attr.type === "list" || attr.type === "set")
+          ) {
+            if (typeof value === "string" && value.trim() !== "") {
+              processedData[attrName] = JSON.parse(value);
+            }
+          } else if (attr && attr.type === "number") {
+            processedData[attrName] = value ? Number(value) : undefined;
+          } else if (attr && attr.type === "boolean") {
+            processedData[attrName] = value;
+          } else {
+            processedData[attrName] = value;
+          }
+        }
+
+        const result = await insertRecord({
+          data: {
+            item: processedData,
+            entityName,
+            tableName,
+          },
+        });
+
+        setSubmitResult(result);
+
+        if (result.success) {
+          setTimeout(() => {
+            navigate({
+              search: { tab: "query" },
+            });
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Submit error:", error);
+        setSubmitResult({
+          success: false,
+          error: error instanceof Error ? error.message : "Unknown error",
+        });
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+  });
+
+  const renderField = (attrName: string, isRequired: boolean, isKeyField = false) => {
+    const attr = schema.attributes[attrName];
+
+    if (attr.readonly && !isKeyField) {
+      return null;
+    }
+
+    const isEffectivelyRequired = isRequired || allIndexKeyFields.has(attrName);
+
+    const validate = (value: any) => {
+      if (isEffectivelyRequired && (!value || value === "")) {
+        return allIndexKeyFields.has(attrName)
+          ? "This field is required (used in index keys)"
+          : "This field is required";
+      }
+
+      if (
+        (attr.type === "map" || attr.type === "list" || attr.type === "set") &&
+        typeof value === "string" &&
+        value.trim() !== ""
+      ) {
+        try {
+          JSON.parse(value);
+        } catch (e) {
+          return "Invalid JSON format";
+        }
+      }
+
+      return undefined;
+    };
+
+    return (
+      <form.Field
+        key={attrName}
+        name={attrName}
+        validators={{
+          onChange: ({ value }) => validate(value),
+        }}
+        children={(field) => (
+          <div className="space-y-2">
+            <Label htmlFor={attrName}>
+              {attrName}
+              {isEffectivelyRequired && <span className="text-red-500 ml-1">*</span>}
+              <span className="text-xs text-muted-foreground ml-2">({attr.type})</span>
+            </Label>
+            {attr.type === "boolean" ? (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id={attrName}
+                  checked={field.state.value === true}
+                  onCheckedChange={(checked) => field.handleChange(checked === true)}
+                />
+                <label
+                  htmlFor={attrName}
+                  className="text-sm text-muted-foreground cursor-pointer"
+                >
+                  {field.state.value ? "True" : "False"}
+                </label>
+              </div>
+            ) : attr.type === "map" || attr.type === "list" || attr.type === "set" ? (
+              <Textarea
+                id={attrName}
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                placeholder={`Enter ${attr.type} as JSON`}
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+              />
+            ) : attr.type === "number" ? (
+              <Input
+                id={attrName}
+                type="number"
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+              />
+            ) : (
+              <Input
+                id={attrName}
+                type="text"
+                value={field.state.value ?? ""}
+                onChange={(e) => field.handleChange(e.target.value)}
+                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+              />
+            )}
+            {field.state.meta.errors.length > 0 && (
+              <p className="text-xs text-red-500">
+                {field.state.meta.errors.join(", ")}
+              </p>
+            )}
+          </div>
+        )}
+      />
+    );
+  };
+
+  return (
+    <div className="mt-6 rounded-lg border bg-card p-6 max-w-4xl">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          form.handleSubmit();
+        }}
+        className="space-y-6"
+      >
+        {/* PK/SK Fields Section */}
+        <div className="rounded border bg-muted/30 p-4 space-y-4">
+          <h3 className="text-sm font-semibold">Primary Key Fields</h3>
+          {pkFields.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              No partition key composite attributes (static key)
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {pkFields.map((field) =>
+                renderField(field, schema.attributes[field]?.required || false, true),
+              )}
+            </div>
+          )}
+
+          {skFields.length > 0 && (
+            <>
+              <h3 className="text-sm font-semibold mt-4">Sort Key Fields</h3>
+              <div className="space-y-4">
+                {skFields.map((field) =>
+                  renderField(field, schema.attributes[field]?.required || false, true),
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Required Fields Section */}
+        {requiredOtherFields.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold">Required Fields</h3>
+            {requiredOtherFields.map((field) => renderField(field, true))}
+          </div>
+        )}
+
+        {/* Optional Fields Section */}
+        {optionalOtherFields.length > 0 && (
+          <div className="space-y-4">
+            <h3 className="text-base font-semibold">Optional Fields</h3>
+            {optionalOtherFields.map((field) => renderField(field, false))}
+          </div>
+        )}
+
+        {/* Submit Button */}
+        <div className="flex gap-3">
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Inserting..." : "Insert Record"}
+          </Button>
+        </div>
+
+        {/* Submit Result */}
+        {submitResult && (
+          <div
+            className={`rounded border p-4 ${
+              submitResult.success
+                ? "bg-green-500/10 border-green-500"
+                : "bg-red-500/10 border-red-500"
+            }`}
+          >
+            {submitResult.success ? (
+              <div>
+                <p className="font-semibold text-green-600">
+                  Record inserted successfully!
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Returning to query tab...
+                </p>
+              </div>
+            ) : (
+              <div>
+                <p className="font-semibold text-red-600">Insert failed</p>
+                <p className="text-sm text-red-500 mt-1">{submitResult.error}</p>
+              </div>
+            )}
+          </div>
+        )}
+      </form>
     </div>
   );
 }

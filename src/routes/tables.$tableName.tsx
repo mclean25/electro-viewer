@@ -109,7 +109,7 @@ function TableLayout() {
         profile={configInfo.profile}
       />
       <div className="ml-64 flex-1">
-        <div className="container mx-auto py-8 px-8 font-mono">
+        <div className="container mx-auto pt-6 pb-8 px-8 font-mono">
           <Outlet />
         </div>
       </div>

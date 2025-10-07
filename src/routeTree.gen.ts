@@ -13,7 +13,6 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as TablesTableNameRouteImport } from './routes/tables.$tableName'
 import { Route as TablesTableNameEntitiesRouteImport } from './routes/tables.$tableName.entities'
 import { Route as TablesTableNameEntityEntityNameRouteImport } from './routes/tables.$tableName.entity.$entityName'
-import { Route as TablesTableNameEntityEntityNameInsertRouteImport } from './routes/tables.$tableName.entity.$entityName_.insert'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -36,26 +35,18 @@ const TablesTableNameEntityEntityNameRoute =
     path: '/entity/$entityName',
     getParentRoute: () => TablesTableNameRoute,
   } as any)
-const TablesTableNameEntityEntityNameInsertRoute =
-  TablesTableNameEntityEntityNameInsertRouteImport.update({
-    id: '/entity/$entityName_/insert',
-    path: '/entity/$entityName/insert',
-    getParentRoute: () => TablesTableNameRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/tables/$tableName': typeof TablesTableNameRouteWithChildren
   '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
   '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
-  '/tables/$tableName/entity/$entityName/insert': typeof TablesTableNameEntityEntityNameInsertRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/tables/$tableName': typeof TablesTableNameRouteWithChildren
   '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
   '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
-  '/tables/$tableName/entity/$entityName/insert': typeof TablesTableNameEntityEntityNameInsertRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -63,7 +54,6 @@ export interface FileRoutesById {
   '/tables/$tableName': typeof TablesTableNameRouteWithChildren
   '/tables/$tableName/entities': typeof TablesTableNameEntitiesRoute
   '/tables/$tableName/entity/$entityName': typeof TablesTableNameEntityEntityNameRoute
-  '/tables/$tableName/entity/$entityName_/insert': typeof TablesTableNameEntityEntityNameInsertRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -72,21 +62,18 @@ export interface FileRouteTypes {
     | '/tables/$tableName'
     | '/tables/$tableName/entities'
     | '/tables/$tableName/entity/$entityName'
-    | '/tables/$tableName/entity/$entityName/insert'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/tables/$tableName'
     | '/tables/$tableName/entities'
     | '/tables/$tableName/entity/$entityName'
-    | '/tables/$tableName/entity/$entityName/insert'
   id:
     | '__root__'
     | '/'
     | '/tables/$tableName'
     | '/tables/$tableName/entities'
     | '/tables/$tableName/entity/$entityName'
-    | '/tables/$tableName/entity/$entityName_/insert'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -124,27 +111,17 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TablesTableNameEntityEntityNameRouteImport
       parentRoute: typeof TablesTableNameRoute
     }
-    '/tables/$tableName/entity/$entityName_/insert': {
-      id: '/tables/$tableName/entity/$entityName_/insert'
-      path: '/entity/$entityName/insert'
-      fullPath: '/tables/$tableName/entity/$entityName/insert'
-      preLoaderRoute: typeof TablesTableNameEntityEntityNameInsertRouteImport
-      parentRoute: typeof TablesTableNameRoute
-    }
   }
 }
 
 interface TablesTableNameRouteChildren {
   TablesTableNameEntitiesRoute: typeof TablesTableNameEntitiesRoute
   TablesTableNameEntityEntityNameRoute: typeof TablesTableNameEntityEntityNameRoute
-  TablesTableNameEntityEntityNameInsertRoute: typeof TablesTableNameEntityEntityNameInsertRoute
 }
 
 const TablesTableNameRouteChildren: TablesTableNameRouteChildren = {
   TablesTableNameEntitiesRoute: TablesTableNameEntitiesRoute,
   TablesTableNameEntityEntityNameRoute: TablesTableNameEntityEntityNameRoute,
-  TablesTableNameEntityEntityNameInsertRoute:
-    TablesTableNameEntityEntityNameInsertRoute,
 }
 
 const TablesTableNameRouteWithChildren = TablesTableNameRoute._addFileChildren(

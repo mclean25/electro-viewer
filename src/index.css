@@ -21,6 +21,7 @@
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-muted-foreground-accent: var(--muted-foreground-accent);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
@@ -56,6 +57,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground-accent: oklch(0.97 0 0);
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -90,6 +92,7 @@
   --secondary-foreground: oklch(1 0 0);
   --muted: oklch(0.28 0.02 250);
   --muted-foreground: oklch(0.62 0.005 0);
+  --muted-foreground-accent: oklch(0.604 0.004 245.2);
   --accent: oklch(0.55 0.06 85);
   --accent-foreground: oklch(1 0 0);
   --destructive: oklch(0.65 0.20 25);
@@ -115,6 +118,7 @@
   * {
     @apply border-border outline-ring/50;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Quantico', sans-serif;
