@@ -1,0 +1,49 @@
+# Development files
+.claude/
+.electro-viewer/
+.tanstack/
+.git/
+.github/
+test/
+*.config.ts
+!vite.config.ts
+!tsconfig.json
+
+# Development configs
+biome.json
+vitest.config.ts
+electro-viewer-config.ts
+components.json
+
+# Dependencies
+node_modules/
+
+# Lock files
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+
+# Env files
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Misc
+CLAUDE.md

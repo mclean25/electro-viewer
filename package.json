@@ -7,6 +7,15 @@
 	"bin": {
 		"electro-viewer": "./bin/electro-viewer.js"
 	},
+	"files": [
+		"bin",
+		"src",
+		"vite.config.ts",
+		"tsconfig.json",
+		"components.json",
+		"README.md",
+		"LICENSE"
+	],
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
@@ -14,9 +23,30 @@
 		"test:ui": "vitest --ui",
 		"check:write": "biome check --write --unsafe ."
 	},
-	"keywords": [],
+	"keywords": [
+		"electrodb",
+		"dynamodb",
+		"aws",
+		"database",
+		"viewer",
+		"browser",
+		"query",
+		"entity",
+		"cli"
+	],
 	"author": "Alex McLean",
 	"license": "ISC",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/mclean25/electro-viewer.git"
+	},
+	"homepage": "https://github.com/mclean25/electro-viewer",
+	"bugs": {
+		"url": "https://github.com/mclean25/electro-viewer/issues"
+	},
+	"engines": {
+		"node": ">=18.0.0"
+	},
 	"dependencies": {
 		"@aws-sdk/client-dynamodb": "^3.879.0",
 		"@aws-sdk/credential-providers": "^3.880.0",

@@ -4,5 +4,9 @@
 /build
 /public
 
+/.output
+/.nitro
+/.tanstack
+
 # Electro Viewer schema cache (generated at build time)
 .electro-viewer/
