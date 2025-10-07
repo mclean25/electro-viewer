@@ -1,6 +1,7 @@
-import { useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { Globe, User, Table } from "lucide-react";
+import { Globe, Table, User } from "lucide-react";
+import { useState } from "react";
+import Logo from "@/assets/Logo.svg";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -9,7 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Logo from "@/assets/Logo.svg";
 
 interface EntitySchema {
   name: string;

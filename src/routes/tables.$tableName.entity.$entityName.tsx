@@ -1,24 +1,20 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import * as path from "node:path";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
+import { fromIni } from "@aws-sdk/credential-providers";
 import {
   DynamoDBDocumentClient,
   GetCommand,
-  QueryCommand,
   PutCommand,
+  QueryCommand,
 } from "@aws-sdk/lib-dynamodb";
-import { fromIni } from "@aws-sdk/credential-providers";
-import { useState } from "react";
-import * as path from "node:path";
 import { useForm } from "@tanstack/react-form";
-import { loadSchemaCache } from "../utils/load-schema-cache";
+import { createFileRoute } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
+import { useState } from "react";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Textarea } from "@/components/ui/textarea";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -26,8 +22,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { buildElectroDBKey } from "../utils/electrodb-keys";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
+import { buildElectroDBKey } from "../utils/electrodb-keys";
+import { loadSchemaCache } from "../utils/load-schema-cache";
 
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
@@ -155,7 +154,7 @@ const insertRecord = createServerFn({
         __edb_v__: schema.version,
       };
 
-      for (const [indexName, indexDef] of Object.entries(schema.indexes)) {
+      for (const [_indexName, indexDef] of Object.entries(schema.indexes)) {
         const pkValue = buildElectroDBKey(true, indexDef.pk.composite, item, schema);
         itemToInsert[indexDef.pk.field] = pkValue;
 
@@ -302,7 +301,6 @@ function EntityDetail() {
 function QueryTab({
   schema,
   tableName,
-  entityName,
 }: {
   schema: any;
   tableName: string;
@@ -326,14 +324,14 @@ function QueryTab({
       setQueryResult(null);
 
       try {
-        let pk = buildElectroDBKey(
+        const pk = buildElectroDBKey(
           true,
           currentIndex.pk.composite,
           value.pkValues,
           schema,
         );
 
-        let sk: string | undefined = undefined;
+        let sk: string | undefined;
         if (currentIndex.sk) {
           const skKey = buildElectroDBKey(
             false,
@@ -342,7 +340,8 @@ function QueryTab({
             schema,
           );
           const hasSkValues = currentIndex.sk.composite.some(
-            (field: string) => value.skValues[field] && value.skValues[field].trim() !== "",
+            (field: string) =>
+              value.skValues[field] && value.skValues[field].trim() !== "",
           );
           if (hasSkValues || currentIndex.sk.composite.length === 0) {
             sk = skKey;
@@ -445,10 +444,8 @@ function QueryTab({
             {currentIndex.pk.composite.length > 0 && (
               <div className="grid grid-cols-2 gap-4 mb-4">
                 {currentIndex.pk.composite.map((field: string) => (
-                  <form.Field
-                    key={field}
-                    name={`pkValues.${field}`}
-                    children={(fieldApi) => (
+                  <form.Field key={field} name={`pkValues.${field}`}>
+                    {(fieldApi) => (
                       <div>
                         <label
                           htmlFor={`pk-${field}`}
@@ -471,7 +468,7 @@ function QueryTab({
                         />
                       </div>
                     )}
-                  />
+                  </form.Field>
                 ))}
               </div>
             )}
@@ -488,10 +485,8 @@ function QueryTab({
               {currentIndex.sk.composite.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   {currentIndex.sk.composite.map((field: string) => (
-                    <form.Field
-                      key={field}
-                      name={`skValues.${field}`}
-                      children={(fieldApi) => (
+                    <form.Field key={field} name={`skValues.${field}`}>
+                      {(fieldApi) => (
                         <div>
                           <label
                             htmlFor={`sk-${field}`}
@@ -510,7 +505,7 @@ function QueryTab({
                           />
                         </div>
                       )}
-                    />
+                    </form.Field>
                   ))}
                 </div>
               )}
@@ -597,9 +592,17 @@ function InsertTab({
 
   // Collect all fields used in any index
   const allIndexKeyFields = new Set<string>();
-  for (const index of Object.values(schema.indexes) as Array<typeof schema.indexes[string]>) {
-    index.pk.composite.forEach((field: string) => allIndexKeyFields.add(field));
-    index.sk?.composite.forEach((field: string) => allIndexKeyFields.add(field));
+  for (const index of Object.values(schema.indexes) as Array<
+    (typeof schema.indexes)[string]
+  >) {
+    for (const field of index.pk.composite) {
+      allIndexKeyFields.add(field);
+    }
+    if (index.sk) {
+      for (const field of index.sk.composite) {
+        allIndexKeyFields.add(field);
+      }
+    }
   }
 
   const allAttributes = Object.keys(schema.attributes);
@@ -692,7 +695,7 @@ function InsertTab({
       ) {
         try {
           JSON.parse(value);
-        } catch (e) {
+        } catch (_e) {
           return "Invalid JSON format";
         }
       }
@@ -707,7 +710,8 @@ function InsertTab({
         validators={{
           onChange: ({ value }) => validate(value),
         }}
-        children={(field) => (
+      >
+        {(field) => (
           <div>
             <label htmlFor={attrName} className="block mb-1 text-xs text-foreground">
               <div className="flex items-center gap-2">
@@ -776,7 +780,7 @@ function InsertTab({
             )}
           </div>
         )}
-      />
+      </form.Field>
     );
   };
 

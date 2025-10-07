@@ -1,9 +1,10 @@
 // src/routes/index.tsx
-import { createFileRoute, useRouter, Link } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
+
+import * as path from "node:path";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
-import * as path from "node:path";
+import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 
 // Load config from current working directory or CLI environment
 const getConfig = async () => {
@@ -53,7 +54,7 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const router = useRouter();
+  const _router = useRouter();
   const data = Route.useLoaderData();
 
   return (

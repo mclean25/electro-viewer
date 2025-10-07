@@ -1,16 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { loadSchemaCache } from "../utils/load-schema-cache";
-import type { EntitySchema } from "../utils/parsedEntitiesSchema";
-import { useState } from "react";
 import {
-  useReactTable,
-  getCoreRowModel,
-  getSortedRowModel,
   createColumnHelper,
   flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
   type SortingState,
+  useReactTable,
 } from "@tanstack/react-table";
+import { useState } from "react";
 import {
   Table,
   TableBody,
@@ -19,6 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { loadSchemaCache } from "../utils/load-schema-cache";
+import type { EntitySchema } from "../utils/parsedEntitiesSchema";
 
 const getEntitySchemas = createServerFn({
   method: "GET",
@@ -71,7 +71,6 @@ function EntitiesViewerPending() {
           </TableHeader>
           <TableBody>
             {Array.from({ length: 5 }).map((_, i) => (
-              // biome-ignore lint/suspicious/noArrayIndexKey: ignore
               <TableRow key={i}>
                 <TableCell>
                   <div className="h-4 w-24 animate-pulse rounded bg-muted" />
@@ -144,7 +143,7 @@ function EntitiesViewer() {
             {formatKeyPattern(
               firstIndex.pk.composite,
               firstIndex.pk.template,
-              `$\{${schema.service}}`,
+              `\${${schema.service}}`,
             )}
           </code>
         );
@@ -163,7 +162,7 @@ function EntitiesViewer() {
             {formatKeyPattern(
               firstIndex.sk.composite,
               firstIndex.sk.template,
-              `$\{${schema.name}}_$\{${schema.version}}`,
+              `\${${schema.name}}_\${${schema.version}}`,
             )}
           </code>
         );

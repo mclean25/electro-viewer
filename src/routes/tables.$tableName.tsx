@@ -1,10 +1,10 @@
-import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { createServerFn } from "@tanstack/react-start";
+import * as path from "node:path";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
-import * as path from "node:path";
-import { loadSchemaCache } from "../utils/load-schema-cache";
+import { createFileRoute, Outlet } from "@tanstack/react-router";
+import { createServerFn } from "@tanstack/react-start";
 import { SideNav } from "../components/SideNav";
+import { loadSchemaCache } from "../utils/load-schema-cache";
 
 const getConfig = async () => {
   const configPath =
