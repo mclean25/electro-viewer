@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Globe, Table, User } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Logo from "@/assets/Logo.svg";
 import { Input } from "@/components/ui/input";
 import {
