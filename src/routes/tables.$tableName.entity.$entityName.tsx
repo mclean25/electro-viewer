@@ -594,42 +594,23 @@ function InsertTab({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<any>(null);
 
-  const primaryIndexName = Object.keys(schema.indexes)[0];
-  const primaryIndex = schema.indexes[primaryIndexName];
-
-  if (!primaryIndex) {
-    return (
-      <div className="mt-6 rounded-lg border bg-card p-6">
-        <p className="text-red-500">Error: No indexes found for this entity</p>
-      </div>
-    );
-  }
-
-  const pkFields = primaryIndex.pk.composite;
-  const skFields = primaryIndex.sk?.composite || [];
-
+  // Collect all fields used in any index
   const allIndexKeyFields = new Set<string>();
   for (const index of Object.values(schema.indexes)) {
     index.pk.composite.forEach((field) => allIndexKeyFields.add(field));
     index.sk?.composite.forEach((field) => allIndexKeyFields.add(field));
   }
 
-  const primaryKeyFieldNames = new Set([...pkFields, ...skFields]);
+  const allAttributes = Object.keys(schema.attributes);
 
-  const otherIndexKeyFields = Array.from(allIndexKeyFields).filter(
-    (field) => !primaryKeyFieldNames.has(field),
+  // Required fields: those used in indexes OR explicitly marked as required
+  const requiredFields = allAttributes.filter(
+    (name) => allIndexKeyFields.has(name) || schema.attributes[name].required,
   );
 
-  const nonKeyFields = Object.keys(schema.attributes).filter(
-    (attrName) => !allIndexKeyFields.has(attrName),
-  );
-
-  const requiredOtherFields = [
-    ...otherIndexKeyFields,
-    ...nonKeyFields.filter((name) => schema.attributes[name].required),
-  ];
-  const optionalOtherFields = nonKeyFields.filter(
-    (name) => !schema.attributes[name].required,
+  // Optional fields: not in indexes and not required
+  const optionalFields = allAttributes.filter(
+    (name) => !allIndexKeyFields.has(name) && !schema.attributes[name].required,
   );
 
   const form = useForm({
@@ -687,10 +668,10 @@ function InsertTab({
     },
   });
 
-  const renderField = (attrName: string, isRequired: boolean, isKeyField = false) => {
+  const renderField = (attrName: string, isRequired: boolean) => {
     const attr = schema.attributes[attrName];
 
-    if (attr.readonly && !isKeyField) {
+    if (attr.readonly && !allIndexKeyFields.has(attrName)) {
       return null;
     }
 
@@ -726,12 +707,14 @@ function InsertTab({
           onChange: ({ value }) => validate(value),
         }}
         children={(field) => (
-          <div className="space-y-2">
-            <Label htmlFor={attrName}>
-              {attrName}
-              {isEffectivelyRequired && <span className="text-red-500 ml-1">*</span>}
-              <span className="text-xs text-muted-foreground ml-2">({attr.type})</span>
-            </Label>
+          <div>
+            <label htmlFor={attrName} className="block mb-1 text-xs text-foreground">
+              <div className="flex items-center gap-2">
+                {attrName}
+                {isEffectivelyRequired && <span className="text-red-500">*</span>}
+                <span className="italic text-muted-foreground-accent">{attr.type}</span>
+              </div>
+            </label>
             {attr.type === "boolean" ? (
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -752,7 +735,11 @@ function InsertTab({
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
                 placeholder={`Enter ${attr.type} as JSON`}
-                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+                className={
+                  field.state.meta.errors.length > 0
+                    ? "border-red-500 bg-background"
+                    : "bg-background"
+                }
               />
             ) : attr.type === "number" ? (
               <Input
@@ -760,7 +747,12 @@ function InsertTab({
                 type="number"
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+                placeholder={attrName}
+                className={
+                  field.state.meta.errors.length > 0
+                    ? "border-red-500 bg-background"
+                    : "bg-background"
+                }
               />
             ) : (
               <Input
@@ -768,7 +760,12 @@ function InsertTab({
                 type="text"
                 value={field.state.value ?? ""}
                 onChange={(e) => field.handleChange(e.target.value)}
-                className={field.state.meta.errors.length > 0 ? "border-red-500" : ""}
+                placeholder={attrName}
+                className={
+                  field.state.meta.errors.length > 0
+                    ? "border-red-500 bg-background"
+                    : "bg-background"
+                }
               />
             )}
             {field.state.meta.errors.length > 0 && (
@@ -783,74 +780,42 @@ function InsertTab({
   };
 
   return (
-    <div className="mt-6 rounded-lg border bg-card p-6 max-w-4xl">
+    <div className="mt-6 rounded-lg border border-card p-6">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           e.stopPropagation();
           form.handleSubmit();
         }}
-        className="space-y-6"
       >
-        {/* PK/SK Fields Section */}
-        <div className="rounded border bg-muted/30 p-4 space-y-4">
-          <h3 className="text-sm font-semibold">Primary Key Fields</h3>
-          {pkFields.length === 0 ? (
-            <p className="text-xs text-muted-foreground">
-              No partition key composite attributes (static key)
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {pkFields.map((field) =>
-                renderField(field, schema.attributes[field]?.required || false, true),
-              )}
-            </div>
-          )}
-
-          {skFields.length > 0 && (
-            <>
-              <h3 className="text-sm font-semibold mt-4">Sort Key Fields</h3>
-              <div className="space-y-4">
-                {skFields.map((field) =>
-                  renderField(field, schema.attributes[field]?.required || false, true),
-                )}
-              </div>
-            </>
-          )}
-        </div>
-
         {/* Required Fields Section */}
-        {requiredOtherFields.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold">Required Fields</h3>
-            {requiredOtherFields.map((field) => renderField(field, true))}
+        {requiredFields.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-sm font-bold mb-4">Required Fields</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {requiredFields.map((field) => renderField(field, true))}
+            </div>
           </div>
         )}
 
         {/* Optional Fields Section */}
-        {optionalOtherFields.length > 0 && (
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold">Optional Fields</h3>
-            {optionalOtherFields.map((field) => renderField(field, false))}
+        {optionalFields.length > 0 && (
+          <div className="mb-5">
+            <h3 className="text-sm font-bold mb-4">Optional Fields</h3>
+            <div className="grid grid-cols-2 gap-4">
+              {optionalFields.map((field) => renderField(field, false))}
+            </div>
           </div>
         )}
 
         {/* Submit Button */}
-        <div className="flex gap-3">
-          <Button type="submit" disabled={isSubmitting}>
-            {isSubmitting ? "Inserting..." : "Insert Record"}
-          </Button>
-        </div>
+        <Button type="submit" disabled={isSubmitting}>
+          {isSubmitting ? "Inserting..." : "Insert Record"}
+        </Button>
 
         {/* Submit Result */}
         {submitResult && (
-          <div
-            className={`rounded border p-4 ${
-              submitResult.success
-                ? "bg-green-500/10 border-green-500"
-                : "bg-red-500/10 border-red-500"
-            }`}
-          >
+          <div className="mt-5 rounded border p-4 bg-background">
             {submitResult.success ? (
               <div>
                 <p className="font-semibold text-green-600">
