@@ -123,4 +123,33 @@
     @apply bg-background text-foreground;
     font-family: 'Quantico', sans-serif;
   }
+
+  /* Custom scrollbar styling */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.4 0.03 250) oklch(0.24 0.02 250);
+  }
+
+  *::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: oklch(0.24 0.02 250);
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: oklch(0.4 0.03 250);
+    border-radius: 6px;
+    border: 3px solid oklch(0.24 0.02 250);
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background: oklch(0.5 0.04 250);
+  }
+
+  *::-webkit-scrollbar-corner {
+    background: oklch(0.24 0.02 250);
+  }
 }
