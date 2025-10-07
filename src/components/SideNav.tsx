@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Globe, Table, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Logo from "@/assets/Logo.svg";
 import { Input } from "@/components/ui/input";
 import {
@@ -24,6 +24,8 @@ interface SideNavProps {
   entities: EntitySchema[];
   region: string;
   profile: string;
+  width: number;
+  onWidthChange: (width: number) => void;
 }
 
 export function SideNav({
@@ -32,9 +34,13 @@ export function SideNav({
   entities,
   region,
   profile,
+  width,
+  onWidthChange,
 }: SideNavProps) {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState("");
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const handleTableChange = (newTable: string) => {
     navigate({
@@ -47,10 +53,46 @@ export function SideNav({
     .sort((a, b) => a.name.localeCompare(b.name))
     .filter((entity) => entity.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+
+      const newWidth = e.clientX;
+      const minWidth = 256;
+      const maxWidth = 400;
+
+      if (newWidth >= minWidth && newWidth <= maxWidth) {
+        onWidthChange(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "ew-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, onWidthChange]);
+
   return (
-    <div className="fixed left-0 top-0 h-screen w-64 border-r border-border bg-background p-6 overflow-y-auto">
-      <Link to="/" className="block mb-6">
-        <img src={Logo} alt="Electro Viewer" className="w-full h-auto" />
+    <div
+      ref={sidebarRef}
+      className="fixed left-0 top-0 h-screen border-r border-border bg-background p-6 overflow-y-auto"
+      style={{ width: `${width}px` }}
+    >
+      <Link to="/" className="flex justify-center mb-6">
+        <img src={Logo} alt="Electro Viewer" className="h-12 w-auto" />
       </Link>
 
       <div className="border-t border-border -mx-6 mb-6" />
@@ -108,6 +150,12 @@ export function SideNav({
           </Link>
         ))}
       </div>
+
+      {/* Resize Handle */}
+      <div
+        className="absolute right-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary transition-colors"
+        onMouseDown={() => setIsResizing(true)}
+      />
     </div>
   );
 }

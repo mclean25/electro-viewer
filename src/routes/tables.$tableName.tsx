@@ -3,6 +3,7 @@ import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import { SideNav } from "../components/SideNav";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 
@@ -98,6 +99,7 @@ function TableLayoutPending() {
 
 function TableLayout() {
   const { tables, entities, tableName, configInfo } = Route.useLoaderData();
+  const [sidebarWidth, setSidebarWidth] = useState(256);
 
   return (
     <div className="flex">
@@ -107,8 +109,10 @@ function TableLayout() {
         entities={entities}
         region={configInfo.region}
         profile={configInfo.profile}
+        width={sidebarWidth}
+        onWidthChange={setSidebarWidth}
       />
-      <div className="ml-64 flex-1">
+      <div className="flex-1" style={{ marginLeft: `${sidebarWidth}px` }}>
         <div className="container mx-auto pt-6 pb-8 px-8 font-mono">
           <Outlet />
         </div>
