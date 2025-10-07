@@ -99,6 +99,7 @@ export function SideNav({
             key={entity.name}
             to="/tables/$tableName/entity/$entityName"
             params={{ tableName: currentTable, entityName: entity.name }}
+            search={{ tab: "query" }}
             className="flex items-center gap-3 rounded px-3 py-2 text-sm hover:bg-muted [&.active]:bg-muted [&.active]:font-semibold"
             activeOptions={{ exact: false }}
           >

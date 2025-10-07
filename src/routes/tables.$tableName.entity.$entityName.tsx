@@ -1,5 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import {
   DynamoDBDocumentClient,
@@ -192,16 +193,16 @@ const insertRecord = createServerFn({
     }
   });
 
+const searchSchema = z.object({
+  tab: z.string().default("query"),
+});
+
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
   component: EntityDetail,
   pendingComponent: EntityDetailPending,
   ssr: "data-only",
   staleTime: 60_000,
-  validateSearch: (search: Record<string, unknown>) => {
-    return {
-      tab: (search.tab as string) || "query",
-    };
-  },
+  validateSearch: searchSchema,
   loader: async ({ params }) => {
     const schema = await getEntitySchema({ data: params.entityName });
     return {
@@ -246,7 +247,7 @@ function EntityDetailPending() {
 
 function EntityDetail() {
   const { entityName, tableName, schema } = Route.useLoaderData();
-  const navigate = useNavigate();
+  const navigate = Route.useNavigate();
   const search = Route.useSearch();
   const currentTab = search.tab || "query";
 
@@ -341,7 +342,7 @@ function QueryTab({
             schema,
           );
           const hasSkValues = currentIndex.sk.composite.some(
-            (field) => value.skValues[field] && value.skValues[field].trim() !== "",
+            (field: string) => value.skValues[field] && value.skValues[field].trim() !== "",
           );
           if (hasSkValues || currentIndex.sk.composite.length === 0) {
             sk = skKey;
@@ -443,7 +444,7 @@ function QueryTab({
             </p>
             {currentIndex.pk.composite.length > 0 && (
               <div className="grid grid-cols-2 gap-4 mb-4">
-                {currentIndex.pk.composite.map((field) => (
+                {currentIndex.pk.composite.map((field: string) => (
                   <form.Field
                     key={field}
                     name={`pkValues.${field}`}
@@ -486,7 +487,7 @@ function QueryTab({
               </p>
               {currentIndex.sk.composite.length > 0 && (
                 <div className="grid grid-cols-2 gap-4 mb-4">
-                  {currentIndex.sk.composite.map((field) => (
+                  {currentIndex.sk.composite.map((field: string) => (
                     <form.Field
                       key={field}
                       name={`skValues.${field}`}
@@ -590,15 +591,15 @@ function InsertTab({
   tableName: string;
   entityName: string;
 }) {
-  const navigate = useNavigate();
+  const navigate = Route.useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<any>(null);
 
   // Collect all fields used in any index
   const allIndexKeyFields = new Set<string>();
-  for (const index of Object.values(schema.indexes)) {
-    index.pk.composite.forEach((field) => allIndexKeyFields.add(field));
-    index.sk?.composite.forEach((field) => allIndexKeyFields.add(field));
+  for (const index of Object.values(schema.indexes) as Array<typeof schema.indexes[string]>) {
+    index.pk.composite.forEach((field: string) => allIndexKeyFields.add(field));
+    index.sk?.composite.forEach((field: string) => allIndexKeyFields.add(field));
   }
 
   const allAttributes = Object.keys(schema.attributes);

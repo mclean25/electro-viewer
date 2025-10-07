@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { loadSchemaCache } from "../utils/load-schema-cache";
-import type { EntitySchema } from "../utils/build-schema-cache";
+import type { EntitySchema } from "../utils/parsedEntitiesSchema";
 import { useState } from "react";
 import {
   useReactTable,
@@ -114,6 +114,7 @@ function EntitiesViewer() {
         <Link
           to="/tables/$tableName/entity/$entityName"
           params={{ tableName, entityName: info.getValue() }}
+          search={{ tab: "query" }}
           className="text-blue-600 hover:text-blue-800 hover:underline"
         >
           {info.getValue()}
