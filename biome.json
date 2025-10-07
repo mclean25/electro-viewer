@@ -6,7 +6,13 @@
     "defaultBranch": "main"
   },
   "files": {
-    "includes": ["**/*.ts", "**/*.tsx", "src/**/*.json", "package.json"]
+    "includes": [
+      "**/*.ts",
+      "**/*.tsx",
+      "src/**/*.json",
+      "package.json",
+      "!src/routeTree.gen.ts"
+    ]
   },
   "formatter": {
     "enabled": true,
