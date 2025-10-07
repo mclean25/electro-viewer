@@ -7,47 +7,12 @@
 import { existsSync, mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { loadTypeScriptFiles } from "./load-typescript";
-
-export interface AttributeDefinition {
-  type: string; // 'string', 'number', 'boolean', 'map', 'list', 'set', etc.
-  required?: boolean;
-  readonly?: boolean;
-  default?: any;
-  properties?: Record<string, AttributeDefinition>; // For map types
-  items?: string | AttributeDefinition; // For list/set types
-}
-
-export interface EntitySchema {
-  name: string;
-  version: string;
-  service: string;
-  sourceFile: string;
-  indexes: {
-    [key: string]: {
-      indexName?: string;
-      pk: {
-        field: string;
-        composite: string[];
-        template?: string;
-      };
-      sk?: {
-        field: string;
-        composite: string[];
-        template?: string;
-      };
-    };
-  };
-  attributes: Record<string, AttributeDefinition>;
-}
-
-export interface SchemaCache {
-  entities: EntitySchema[];
-  generatedAt: string;
-  config: {
-    entityConfigPaths: string[];
-    tsconfigPath?: string;
-  };
-}
+import {
+  type AttributeDefinition,
+  type EntitySchema,
+  type SchemaCache,
+  schemaCacheSchema,
+} from "./parsedEntitiesSchema";
 
 /**
  * Build schema cache from entity config files
@@ -187,6 +152,14 @@ export function writeSchemaCache(schemaCache: SchemaCache): string {
   const projectRoot = process.env.ELECTRO_VIEWER_CWD || process.cwd();
   const cacheDir = join(projectRoot, ".electro-viewer");
   const cacheFile = join(cacheDir, "schema.json");
+
+  // Validate schema before writing
+  const validationResult = schemaCacheSchema.safeParse(schemaCache);
+  if (!validationResult.success) {
+    throw new Error(
+      `Schema validation failed before writing:\n${validationResult.error.message}`,
+    );
+  }
 
   // Create cache directory if it doesn't exist
   if (!existsSync(cacheDir)) {

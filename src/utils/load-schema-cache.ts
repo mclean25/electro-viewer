@@ -5,7 +5,7 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { SchemaCache } from "./build-schema-cache";
+import { type SchemaCache, schemaCacheSchema } from "./parsedEntitiesSchema";
 
 /**
  * Load schema cache from disk (server-side only)
@@ -25,7 +25,15 @@ export function loadSchemaCache(): SchemaCache {
   }
 
   const cacheContent = readFileSync(cacheFile, "utf-8");
-  const schemaCache: SchemaCache = JSON.parse(cacheContent);
+  const parsedContent = JSON.parse(cacheContent);
 
-  return schemaCache;
+  // Validate schema after loading
+  const validationResult = schemaCacheSchema.safeParse(parsedContent);
+  if (!validationResult.success) {
+    throw new Error(
+      `Schema validation failed after loading from ${cacheFile}:\n${validationResult.error.message}`,
+    );
+  }
+
+  return validationResult.data;
 }
