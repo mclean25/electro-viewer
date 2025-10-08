@@ -1,6 +1,6 @@
 {
   "name": "electro-viewer",
-  "version": "0.1.10",
+  "version": "0.1.11",
   "description": "A browser-based viewer for ElectroDB entities and DynamoDB data",
   "main": "index.js",
   "type": "module",

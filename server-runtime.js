@@ -4,8 +4,9 @@
  * This wraps the built fetch handler in a Node HTTP server
  */
 import { createServer } from 'node:http';
+import { createReadStream, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import { dirname, resolve, extname } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -17,9 +18,48 @@ const { default: server } = serverModule;
 const port = process.env.PORT || 3030;
 const host = process.env.HOST || '0.0.0.0';
 
+// MIME types for static assets
+const mimeTypes = {
+  '.html': 'text/html',
+  '.js': 'text/javascript',
+  '.css': 'text/css',
+  '.json': 'application/json',
+  '.png': 'image/png',
+  '.jpg': 'image/jpg',
+  '.gif': 'image/gif',
+  '.svg': 'image/svg+xml',
+  '.ico': 'image/x-icon',
+  '.woff': 'font/woff',
+  '.woff2': 'font/woff2',
+};
+
 // Create HTTP server that wraps the fetch handler
 const httpServer = createServer(async (req, res) => {
   try {
+    // Serve static files from dist/client
+    if (req.url.startsWith('/assets/') || req.url === '/favicon.ico') {
+      const filePath = resolve(__dirname, 'dist/client', req.url.slice(1));
+
+      try {
+        const stat = statSync(filePath);
+        if (stat.isFile()) {
+          const ext = extname(filePath);
+          const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+          res.writeHead(200, {
+            'Content-Type': contentType,
+            'Content-Length': stat.size,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          });
+
+          createReadStream(filePath).pipe(res);
+          return;
+        }
+      } catch (err) {
+        // File not found, continue to app handler
+      }
+    }
+
     // Convert Node.js request to Web Request
     const url = `http://${req.headers.host}${req.url}`;
 
