@@ -54,15 +54,17 @@ const getEntitySchema = createServerFn({
 const queryDynamoDB = createServerFn({
   method: "POST",
 })
-  .inputValidator((data: {
-    pk: string;
-    sk?: string;
-    pkField: string;
-    skField?: string;
-    indexName?: string;
-    entityName?: string;
-    tableName: string;
-  }) => data)
+  .inputValidator(
+    (data: {
+      pk: string;
+      sk?: string;
+      pkField: string;
+      skField?: string;
+      indexName?: string;
+      entityName?: string;
+      tableName: string;
+    }) => data,
+  )
   .handler(async ({ data }) => {
     const { pk, sk, pkField, skField, indexName, entityName, tableName } = data;
 
@@ -130,11 +132,10 @@ const queryDynamoDB = createServerFn({
 const insertRecord = createServerFn({
   method: "POST",
 })
-  .inputValidator((data: {
-    item: Record<string, any>;
-    entityName: string;
-    tableName: string;
-  }) => data)
+  .inputValidator(
+    (data: { item: Record<string, any>; entityName: string; tableName: string }) =>
+      data,
+  )
   .handler(async ({ data }) => {
     const { item, entityName, tableName } = data;
 
