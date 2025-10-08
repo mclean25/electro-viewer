@@ -6,14 +6,13 @@ import { fromIni } from "@aws-sdk/credential-providers";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 
-// Load config from current working directory or CLI environment
-const getConfig = async () => {
-  // Use CLI config path if available, otherwise use current working directory
-  const configPath =
-    process.env.ELECTRO_VIEWER_CONFIG_PATH ||
-    path.resolve(process.cwd(), "electro-viewer-config.ts");
-  const configModule = await import(/* @vite-ignore */ configPath);
-  return configModule.config;
+// Load config from environment variable (set by bin script)
+const getConfig = () => {
+  const configJson = process.env.ELECTRO_VIEWER_CONFIG;
+  if (!configJson) {
+    throw new Error('ELECTRO_VIEWER_CONFIG environment variable not set');
+  }
+  return JSON.parse(configJson);
 };
 
 // Server function to list DynamoDB tables
@@ -21,8 +20,8 @@ const listTables = createServerFn({
   method: "GET",
 }).handler(async () => {
   try {
-    // Load config from current working directory
-    const config = await getConfig();
+    // Load config from environment variable
+    const config = getConfig();
 
     const client = new DynamoDBClient({
       region: config.region,

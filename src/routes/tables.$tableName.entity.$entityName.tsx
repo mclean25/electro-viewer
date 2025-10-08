@@ -28,13 +28,13 @@ import { EntityQueryResultsTable } from "../components/EntityQueryResultsTable";
 import { buildElectroDBKey } from "../utils/electrodb-keys";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 
-// Load config from current working directory or CLI environment
-const getConfig = async () => {
-  const configPath =
-    process.env.ELECTRO_VIEWER_CONFIG_PATH ||
-    path.resolve(process.cwd(), "electro-viewer-config.ts");
-  const configModule = await import(/* @vite-ignore */ configPath);
-  return configModule.config;
+// Load config from environment variable (set by bin script)
+const getConfig = () => {
+  const configJson = process.env.ELECTRO_VIEWER_CONFIG;
+  if (!configJson) {
+    throw new Error('ELECTRO_VIEWER_CONFIG environment variable not set');
+  }
+  return JSON.parse(configJson);
 };
 
 const getEntitySchema = createServerFn({
@@ -69,7 +69,7 @@ const queryDynamoDB = createServerFn({
     const { pk, sk, pkField, skField, indexName, entityName, tableName } = data;
 
     try {
-      const config = await getConfig();
+      const config = getConfig();
 
       const client = new DynamoDBClient({
         region: config.region,
@@ -140,7 +140,7 @@ const insertRecord = createServerFn({
     const { item, entityName, tableName } = data;
 
     try {
-      const config = await getConfig();
+      const config = getConfig();
       const cache = loadSchemaCache();
       const schema = cache.entities.find((e) => e.name === entityName);
 

@@ -105,24 +105,29 @@ try {
   process.exit(1);
 }
 
-// Path to the built server
-const serverPath = join(packageRoot, 'dist', 'server', 'server.js');
+// Path to the server runtime
+const serverPath = join(packageRoot, 'server-runtime.js');
 
 if (!existsSync(serverPath)) {
-  console.error(`❌ Built server not found at: ${serverPath}`);
+  console.error(`❌ Server runtime not found at: ${serverPath}`);
   console.error('The package may not be built correctly.');
   process.exit(1);
 }
 
-// Start the built server
+console.log('🚀 Starting server...');
+console.log('');
+
+// Start the server runtime
 const serverProcess = spawn('node', [serverPath], {
   stdio: 'inherit',
   env: {
     ...process.env,
     ELECTRO_VIEWER_CONFIG_PATH: resolvedConfigPath,
+    ELECTRO_VIEWER_CONFIG: JSON.stringify(config), // Pass the loaded config as JSON
     ELECTRO_VIEWER_CWD: process.cwd(),
     PORT: port,
-    HOST: '0.0.0.0'
+    HOST: '0.0.0.0',
+    NODE_ENV: 'production'
   }
 });
 
@@ -132,8 +137,16 @@ serverProcess.on('error', (err) => {
   process.exit(1);
 });
 
+// Server started successfully
+serverProcess.on('spawn', () => {
+  console.log(`✅ Server running at http://localhost:${port}`);
+  console.log('');
+  console.log('Press Ctrl+C to stop');
+});
+
 // Handle process termination
 process.on('SIGINT', () => {
+  console.log('\n\n👋 Shutting down...');
   serverProcess.kill('SIGINT');
 });
 
@@ -143,10 +156,10 @@ process.on('SIGTERM', () => {
 
 serverProcess.on('exit', (code, signal) => {
   if (code !== 0 && code !== null) {
-    console.error(`❌ Server process exited with code ${code}`);
+    console.error(`\n❌ Server process exited with code ${code}`);
   }
   if (signal) {
-    console.error(`❌ Server process killed with signal ${signal}`);
+    console.error(`\n❌ Server process killed with signal ${signal}`);
   }
   process.exit(code || 0);
 });

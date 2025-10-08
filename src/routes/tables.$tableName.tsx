@@ -7,18 +7,18 @@ import { useState } from "react";
 import { SideNav } from "../components/SideNav";
 import { loadSchemaCache } from "../utils/load-schema-cache";
 
-const getConfig = async () => {
-  const configPath =
-    process.env.ELECTRO_VIEWER_CONFIG_PATH ||
-    path.resolve(process.cwd(), "electro-viewer-config.ts");
-  const configModule = await import(/* @vite-ignore */ configPath);
-  return configModule.config;
+const getConfig = () => {
+  const configJson = process.env.ELECTRO_VIEWER_CONFIG;
+  if (!configJson) {
+    throw new Error('ELECTRO_VIEWER_CONFIG environment variable not set');
+  }
+  return JSON.parse(configJson);
 };
 
 const listTables = createServerFn({
   method: "GET",
 }).handler(async () => {
-  const config = await getConfig();
+  const config = getConfig();
   const client = new DynamoDBClient({
     region: config.region,
     credentials: fromIni({ profile: config.profile }),
@@ -43,7 +43,7 @@ const getEntitySchemas = createServerFn({
 const getConfigInfo = createServerFn({
   method: "GET",
 }).handler(async () => {
-  const config = await getConfig();
+  const config = getConfig();
   return {
     region: config.region,
     profile: config.profile,
