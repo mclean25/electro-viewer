@@ -40,7 +40,7 @@ const getConfig = async () => {
 const getEntitySchema = createServerFn({
   method: "GET",
 })
-  .validator((entityName: string) => entityName)
+  .inputValidator((data: string) => data)
   .handler(async ({ data: entityName }) => {
     const cache = loadSchemaCache();
     const schema = cache.entities.find((e) => e.name === entityName);
@@ -54,17 +54,15 @@ const getEntitySchema = createServerFn({
 const queryDynamoDB = createServerFn({
   method: "POST",
 })
-  .validator(
-    (params: {
-      pk: string;
-      sk?: string;
-      pkField: string;
-      skField?: string;
-      indexName?: string;
-      entityName?: string;
-      tableName: string;
-    }) => params,
-  )
+  .inputValidator((data: {
+    pk: string;
+    sk?: string;
+    pkField: string;
+    skField?: string;
+    indexName?: string;
+    entityName?: string;
+    tableName: string;
+  }) => data)
   .handler(async ({ data }) => {
     const { pk, sk, pkField, skField, indexName, entityName, tableName } = data;
 
@@ -132,10 +130,11 @@ const queryDynamoDB = createServerFn({
 const insertRecord = createServerFn({
   method: "POST",
 })
-  .validator(
-    (params: { item: Record<string, any>; entityName: string; tableName: string }) =>
-      params,
-  )
+  .inputValidator((data: {
+    item: Record<string, any>;
+    entityName: string;
+    tableName: string;
+  }) => data)
   .handler(async ({ data }) => {
     const { item, entityName, tableName } = data;
 
