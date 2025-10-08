@@ -1,10 +1,12 @@
 # Development files
 .claude/
 .electro-viewer/
-.tanstack/
 .git/
 .github/
 test/
+src/
+.output/
+.tanstack/
 *.config.ts
 !vite.config.ts
 !tsconfig.json

@@ -55,30 +55,36 @@ console.log('');
 process.env.ELECTRO_VIEWER_CONFIG_PATH = resolvedConfigPath;
 process.env.ELECTRO_VIEWER_CWD = process.cwd();
 
-// Start the Vite dev server with environment variables
-const viteProcess = spawn('pnpm', [
-  'dev',
-  '--port', port,
-  '--host', '0.0.0.0'
-], {
-  cwd: packageRoot,
+// Path to the built server
+const serverPath = join(packageRoot, 'dist', 'server', 'server.js');
+
+if (!existsSync(serverPath)) {
+  console.error(`❌ Built server not found at: ${serverPath}`);
+  console.error('The package may not be built correctly.');
+  process.exit(1);
+}
+
+// Start the built server
+const serverProcess = spawn('node', [serverPath], {
   stdio: 'inherit',
   env: {
     ...process.env,
     ELECTRO_VIEWER_CONFIG_PATH: resolvedConfigPath,
-    ELECTRO_VIEWER_CWD: process.cwd()
+    ELECTRO_VIEWER_CWD: process.cwd(),
+    PORT: port,
+    HOST: '0.0.0.0'
   }
 });
 
 // Handle process termination
 process.on('SIGINT', () => {
-  viteProcess.kill('SIGINT');
+  serverProcess.kill('SIGINT');
 });
 
 process.on('SIGTERM', () => {
-  viteProcess.kill('SIGTERM');
+  serverProcess.kill('SIGTERM');
 });
 
-viteProcess.on('exit', (code) => {
+serverProcess.on('exit', (code) => {
   process.exit(code);
 });
