@@ -1,6 +1,5 @@
 // src/routes/index.tsx
 
-import * as path from "node:path";
 import { DynamoDBClient, ListTablesCommand } from "@aws-sdk/client-dynamodb";
 import { fromIni } from "@aws-sdk/credential-providers";
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
@@ -10,7 +9,7 @@ import { createServerFn } from "@tanstack/react-start";
 const getConfig = () => {
   const configJson = process.env.ELECTRO_VIEWER_CONFIG;
   if (!configJson) {
-    throw new Error('ELECTRO_VIEWER_CONFIG environment variable not set');
+    throw new Error("ELECTRO_VIEWER_CONFIG environment variable not set");
   }
   return JSON.parse(configJson);
 };
