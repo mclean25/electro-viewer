@@ -1,6 +1,6 @@
 {
   "name": "electro-viewer",
-  "version": "0.1.6",
+  "version": "0.1.8",
   "description": "A browser-based viewer for ElectroDB entities and DynamoDB data",
   "main": "index.js",
   "type": "module",
@@ -15,7 +15,8 @@
   ],
   "scripts": {
     "dev": "vite dev",
-    "build": "vite build",
+    "build": "vite build && pnpm build:cache-cli",
+    "build:cache-cli": "esbuild src/build-cache-cli.ts --bundle --platform=node --format=esm --outfile=dist/build-cache.js --packages=external",
     "prepublishOnly": "pnpm build",
     "test": "vitest",
     "test:ui": "vitest --ui",

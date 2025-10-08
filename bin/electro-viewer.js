@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 import { spawn } from 'child_process';
+import { mkdtempSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
 import { dirname, join, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync } from 'fs';
+import { build } from 'esbuild';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -55,6 +58,53 @@ console.log('');
 process.env.ELECTRO_VIEWER_CONFIG_PATH = resolvedConfigPath;
 process.env.ELECTRO_VIEWER_CWD = process.cwd();
 
+// Load config using esbuild
+let config;
+const tempDir = mkdtempSync(join(tmpdir(), 'electro-viewer-config-'));
+const outfile = join(tempDir, 'config.mjs');
+
+try {
+  // Bundle the config file with esbuild
+  await build({
+    entryPoints: [resolvedConfigPath],
+    bundle: true,
+    platform: 'node',
+    format: 'esm',
+    outfile,
+    logLevel: 'error',
+  });
+
+  // Import the bundled config
+  const configModule = await import(outfile);
+  config = configModule.config;
+} catch (error) {
+  console.error('❌ Failed to load config:', error.message);
+  process.exit(1);
+} finally {
+  // Clean up temp directory
+  try {
+    rmSync(tempDir, { recursive: true, force: true });
+  } catch (_err) {
+    // Ignore cleanup errors
+  }
+}
+
+// Build schema cache before starting server
+try {
+  // Import the schema cache builder from the built package
+  const { buildAndWriteSchemaCache } = await import(join(packageRoot, 'dist', 'build-cache.js'));
+
+  await buildAndWriteSchemaCache(
+    config.entityConfigPaths,
+    config.tsconfigPath,
+    config.env
+  );
+} catch (error) {
+  console.error('❌ Failed to build schema cache:', error.message);
+  console.error(error.stack);
+  process.exit(1);
+}
+
 // Path to the built server
 const serverPath = join(packageRoot, 'dist', 'server', 'server.js');
 
@@ -76,6 +126,12 @@ const serverProcess = spawn('node', [serverPath], {
   }
 });
 
+// Handle spawn errors
+serverProcess.on('error', (err) => {
+  console.error('❌ Failed to start server process:', err);
+  process.exit(1);
+});
+
 // Handle process termination
 process.on('SIGINT', () => {
   serverProcess.kill('SIGINT');
@@ -85,6 +141,12 @@ process.on('SIGTERM', () => {
   serverProcess.kill('SIGTERM');
 });
 
-serverProcess.on('exit', (code) => {
-  process.exit(code);
+serverProcess.on('exit', (code, signal) => {
+  if (code !== 0 && code !== null) {
+    console.error(`❌ Server process exited with code ${code}`);
+  }
+  if (signal) {
+    console.error(`❌ Server process killed with signal ${signal}`);
+  }
+  process.exit(code || 0);
 });
