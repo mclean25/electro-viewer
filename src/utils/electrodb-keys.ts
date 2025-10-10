@@ -10,14 +10,13 @@ export const buildElectroDBKey = (
   values: Record<string, string>,
   schema: EntitySchema,
 ) => {
-  if (isPartitionKey && composite.length === 0) {
-    // For empty PK composite (like Company PK), ElectroDB uses just: $<service>
-    return `$${schema.service || "service"}`;
-  }
-
   if (isPartitionKey) {
     // For PK with composites - no entity name, just service and composites
-    const prefix = `$${schema.service || "service"}#`;
+    const prefix = `$${schema.service.toLowerCase()}#`;
+    if (composite.length === 0) {
+      // Remove the trailing #
+      return prefix.slice(0, -1);
+    }
     const compositeValues = composite
       .filter((field) => field)
       .map((field) => {
@@ -28,7 +27,7 @@ export const buildElectroDBKey = (
     return prefix + compositeValues;
   } else {
     // For SK (sort keys) - always include version
-    const entityName = (schema.name || "entity").toLowerCase();
+    const entityName = schema.name.toLowerCase();
     const version = schema.version || "1";
     const entityPart = `${entityName}_${version}`;
 

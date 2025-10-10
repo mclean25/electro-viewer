@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { buildElectroDBKey } from "./electrodb-keys";
 
 describe("buildElectroDBKey", () => {
+  it("should lowercase the service and entity name", () => {
+    const schema = {
+      name: "FileModel",
+      version: "1",
+      service: "MoDEL",
+    };
+
+    expect(buildElectroDBKey(true, [], {}, schema)).toBe("$model");
+    expect(buildElectroDBKey(false, [], {}, schema)).toBe("$filemodel_1");
+  });
+
   describe("FileModel entity", () => {
     const fileModelSchema = {
       name: "fileModel",
