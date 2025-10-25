@@ -57,9 +57,12 @@ export async function loadTypeScriptFile(
 
     // Create define object for environment variables
     // This replaces process.env.VAR references with actual values or undefined
+    // Only include variables with valid JavaScript identifier names (no hyphens, etc.)
     const define: Record<string, string> = {};
+    const validIdentifierRegex = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
+
     for (const [key, value] of Object.entries(process.env)) {
-      if (value !== undefined) {
+      if (value !== undefined && validIdentifierRegex.test(key)) {
         define[`process.env.${key}`] = JSON.stringify(value);
       }
     }
