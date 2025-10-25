@@ -114,7 +114,7 @@ function EntitiesViewer() {
           to="/tables/$tableName/entity/$entityName"
           params={{ tableName, entityName: info.getValue() }}
           search={{ tab: "query" }}
-          className="text-blue-600 hover:text-blue-800 hover:underline"
+          className="text-yellow-500 hover:text-yellow-700 hover:underline"
         >
           {info.getValue()}
         </Link>
