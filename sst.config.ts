@@ -61,12 +61,9 @@ export default $config({
       deletionProtection: false,
     });
 
-    new sst.x.DevCommand("ElectroViewer", {
+    new sst.aws.TanStackStart("Web", {
       link: [table],
-      dev: {
-        autostart: true,
-        command: "pnpm electro-viewer",
-      },
+      buildCommand: "pnpm build",
     });
   },
 });
