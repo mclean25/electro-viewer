@@ -47,6 +47,10 @@ const getConfig = async () => {
 export default defineConfig(async () => {
   const config = await getConfig();
 
+  // Set config in environment so server functions can access it
+  process.env.ELECTRO_VIEWER_CONFIG = JSON.stringify(config);
+  process.env.ELECTRO_VIEWER_CWD = process.cwd();
+
   return {
     server: {
       port: 3000,

@@ -6,10 +6,10 @@
 export const config = {
   // AWS profile name to use for authentication
   // This should match a profile in your ~/.aws/credentials file
-  profile: "main",
+  profile: "playground",
 
   // AWS region (optional - will use profile's default if not specified)
-  region: "us-east-1",
+  region: "us-west-1",
 
   // Paths or glob patterns to your ElectroDB entity files
   // Relative paths from your project root
@@ -17,7 +17,7 @@ export const config = {
   //   ["./entities.ts"] - Single file
   //   ["./packages/*/entities.ts"] - Glob pattern
   //   ["./entities.ts", "./custom/*.ts"] - Mix of direct paths and globs
-  entityConfigPaths: ["./test/dynamo/service.ts"],
+  entityConfigPaths: ["./test/dynamo/entities/*.ts"],
 
   // Optional: Path to tsconfig.json for resolving TypeScript path aliases
   // Relative path from your project root
@@ -26,8 +26,10 @@ export const config = {
 
   // Optional: Environment variables to set when loading the entities file
   // Useful for variables that your entities file depends on
-  // Example: { IS_PERMISSIONED_ENV: "false", NODE_ENV: "development" }
-  env: {},
+  // Example: { NODE_ENV: "development" }
+  env: {
+    NODE_ENV: "development",
+  },
 } as const;
 
 export type ElectroViewerConfig = typeof config;
