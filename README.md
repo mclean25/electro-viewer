@@ -19,8 +19,9 @@ files in your project.
 
 - [x] Read support
 - [x] Add support
-- [ ] Delete Support
+- [ ] Delete support
 - [ ] Update support
+- [ ] Custom Template String support
 - [ ] Scan support
 - [ ] Run arbitrary queries
 - [ ] Query read units used statistics
@@ -51,8 +52,13 @@ export const config = {
   // AWS region (optional - uses profile's default if not specified)
   region: "us-east-1",
 
-  // Path to your ElectroDB entities file (relative to project root)
-  serviceConfigPath: "./path/to/your/entities.ts",
+  // Paths or glob patterns to your ElectroDB entity files
+  // Relative paths from your project root
+  // Examples:
+  //   ["./entities.ts"] - Single file
+  //   ["./packages/*/entities.ts"] - Glob pattern
+  //   ["./entities.ts", "./custom/*.ts"] - Mix of direct paths and globs
+  entityConfigPaths: ["./path/to/your/entities.ts"],
 
   // Optional: Path to tsconfig.json (defaults to "./tsconfig.json")
   tsconfigPath: "./tsconfig.json",
@@ -71,7 +77,7 @@ export type ElectroViewerConfig = typeof config;
 |--------|------|----------|---------|-------------|
 | `profile` | string | Yes | - | AWS profile name |
 | `region` | string | No | Profile default | AWS region |
-| `serviceConfigPath` | string | Yes | - | Path to entities file |
+| `entityConfigPaths` | string[] | Yes | - | Paths or glob patterns to entity files |
 | `tsconfigPath` | string | No | `"./tsconfig.json"` | Path to tsconfig.json |
 | `env` | Record<string, string> | No | `{}` | Environment variables |
 
