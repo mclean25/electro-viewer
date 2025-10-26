@@ -11,7 +11,8 @@
       "**/*.tsx",
       "src/**/*.json",
       "package.json",
-      "!src/routeTree.gen.ts"
+      "!src/routeTree.gen.ts",
+      "!sst-env.d.ts"
     ]
   },
   "formatter": {
