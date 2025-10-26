@@ -5,7 +5,7 @@
 Electro Viewer is a tool to help you quickly browse your ElectroDB enties by reading the configuration
 files in your project.
 
-<img width="2980" height="2166" alt="CleanShot 2025-10-06 at 18 23 47@2x" src="https://github.com/user-attachments/assets/9105e85a-1ad7-48e5-8a23-8c7abe4d2861" />
+<img width="3466" height="2748" alt="CleanShot 2025-10-26 at 12 21 19@2x" src="https://github.com/user-attachments/assets/e61d503f-11a9-47e2-80b0-51dd59ea91f5" />
 
 ## Features
 
