@@ -5,11 +5,12 @@ import {
   GetCommand,
   PutCommand,
   QueryCommand,
+  ScanCommand,
 } from "@aws-sdk/lib-dynamodb";
 import { useForm } from "@tanstack/react-form";
 import { createFileRoute } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -191,8 +192,67 @@ const insertRecord = createServerFn({
     }
   });
 
+// Server function to scan DynamoDB
+const scanDynamoDB = createServerFn({
+  method: "POST",
+})
+  .inputValidator(
+    (data: {
+      indexName?: string;
+      entityName?: string;
+      tableName: string;
+      limit?: number;
+    }) => data,
+  )
+  .handler(async ({ data }) => {
+    const { indexName, entityName, tableName, limit = 100 } = data;
+
+    try {
+      const config = getConfig();
+
+      const client = new DynamoDBClient({
+        region: config.region,
+        credentials: fromIni({ profile: config.profile }),
+      });
+
+      const docClient = DynamoDBDocumentClient.from(client);
+
+      const scanParams: any = {
+        TableName: tableName,
+        Limit: limit,
+      };
+
+      if (indexName) {
+        scanParams.IndexName = indexName;
+      }
+
+      if (entityName) {
+        scanParams.FilterExpression = "#edb_e = :entityName";
+        scanParams.ExpressionAttributeNames = { "#edb_e": "__edb_e__" };
+        scanParams.ExpressionAttributeValues = { ":entityName": entityName };
+      }
+
+      const command = new ScanCommand(scanParams);
+
+      const result = await docClient.send(command);
+      return {
+        success: true,
+        data: result.Items || [],
+        count: result.Count || 0,
+        scannedCount: result.ScannedCount || 0,
+      };
+    } catch (error: any) {
+      console.error("DynamoDB scan error:", error);
+      return {
+        success: false,
+        error: error.message || "Unknown error occurred",
+        errorType: error.name || "UnknownError",
+      };
+    }
+  });
+
 const searchSchema = z.object({
-  tab: z.string().default("query"),
+  tab: z.enum(["query", "scan", "insert"]).default("query"),
 });
 
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
@@ -251,7 +311,7 @@ function EntityDetail() {
 
   const handleTabChange = (value: string) => {
     navigate({
-      search: { tab: value },
+      search: { tab: value as "query" | "scan" | "insert" },
     });
   };
 
@@ -282,11 +342,16 @@ function EntityDetail() {
       <Tabs value={currentTab} onValueChange={handleTabChange}>
         <TabsList>
           <TabsTrigger value="query">query</TabsTrigger>
+          <TabsTrigger value="scan">scan</TabsTrigger>
           <TabsTrigger value="insert">insert</TabsTrigger>
         </TabsList>
 
         <TabsContent value="query">
           <QueryTab schema={schema} tableName={tableName} entityName={entityName} />
+        </TabsContent>
+
+        <TabsContent value="scan">
+          <ScanTab schema={schema} tableName={tableName} entityName={entityName} />
         </TabsContent>
 
         <TabsContent value="insert">
@@ -838,6 +903,184 @@ function InsertTab({
           </div>
         )}
       </form>
+    </div>
+  );
+}
+
+function ScanTab({
+  schema,
+  tableName,
+  entityName,
+}: {
+  schema: any;
+  tableName: string;
+  entityName: string;
+}) {
+  const [selectedIndex, setSelectedIndex] = useState<string | undefined>(undefined);
+  const [scanResult, setScanResult] = useState<any>(null);
+  const [isScanning, setIsScanning] = useState(false);
+  const [filterByEntity, setFilterByEntity] = useState(true);
+  const [limit, setLimit] = useState(100);
+  const filterByEntityId = useId();
+  const limitId = useId();
+
+  const handleScan = async () => {
+    setIsScanning(true);
+    setScanResult(null);
+
+    try {
+      const result = await scanDynamoDB({
+        data: {
+          tableName,
+          indexName: selectedIndex,
+          entityName: filterByEntity ? entityName : undefined,
+          limit,
+        },
+      });
+
+      setScanResult(result);
+    } catch (error) {
+      console.error("Scan error:", error);
+      setScanResult({
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      });
+    } finally {
+      setIsScanning(false);
+    }
+  };
+
+  return (
+    <div className="mt-6 rounded-lg border border-card p-6">
+      <div className="mb-5">
+        <h3 className="text-sm font-semibold mb-2">Scan Options</h3>
+
+        <div className="space-y-4">
+          {/* Index Selection */}
+          <div>
+            <div className="block mb-2 text-xs text-foreground">
+              Select Index (optional)
+            </div>
+            <Select
+              value={selectedIndex || "main"}
+              onValueChange={(value) => {
+                setSelectedIndex(value === "main" ? undefined : value);
+                setScanResult(null);
+              }}
+            >
+              <SelectTrigger className="w-64 bg-background">
+                <SelectValue placeholder="Main table" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="main">Main table</SelectItem>
+                {Object.keys(schema.indexes).map((indexName) => {
+                  const isGSI = schema.indexes[indexName].pk.field !== "pk";
+                  return (
+                    <SelectItem key={indexName} value={indexName}>
+                      {indexName} {isGSI && "(GSI)"}
+                    </SelectItem>
+                  );
+                })}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Filter by entity checkbox */}
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id={filterByEntityId}
+              checked={filterByEntity}
+              onCheckedChange={(checked) => setFilterByEntity(checked === true)}
+            />
+            <label
+              htmlFor={filterByEntityId}
+              className="text-sm text-foreground cursor-pointer"
+            >
+              Filter by entity type ({entityName})
+            </label>
+          </div>
+
+          {/* Limit input */}
+          <div>
+            <label htmlFor={limitId} className="block mb-2 text-xs text-foreground">
+              Result limit (max items to return)
+            </label>
+            <Input
+              id={limitId}
+              type="number"
+              min={1}
+              max={1000}
+              value={limit}
+              onChange={(e) => setLimit(Number(e.target.value))}
+              className="w-32 bg-background"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Note: Scan operations can be expensive. Use a reasonable limit.
+            </p>
+          </div>
+        </div>
+
+        <Button onClick={handleScan} disabled={isScanning} className="mt-4">
+          {isScanning ? "Scanning..." : "Scan Table"}
+        </Button>
+      </div>
+
+      {scanResult && (
+        <div className="mt-5 rounded border p-4 bg-background">
+          <h3 className="text-base font-semibold mb-3">Scan Result</h3>
+
+          {scanResult.success ? (
+            <>
+              <div className="mb-4 rounded border border-border bg-muted p-3">
+                <h4 className="m-0 mb-2 text-sm font-semibold">Scan Statistics:</h4>
+                <div className="font-mono text-xs space-y-1">
+                  <div>
+                    <strong>Items returned:</strong>
+                    <span className="ml-2">{scanResult.count}</span>
+                  </div>
+                  <div>
+                    <strong>Items scanned:</strong>
+                    <span className="ml-2">{scanResult.scannedCount}</span>
+                  </div>
+                  {selectedIndex && (
+                    <div>
+                      <strong>Index:</strong>
+                      <code className="ml-2 rounded border bg-card p-1 text-xs">
+                        {selectedIndex}
+                      </code>
+                    </div>
+                  )}
+                  {filterByEntity && (
+                    <div>
+                      <strong>Entity filter:</strong>
+                      <code className="ml-2 rounded border bg-card p-1 text-xs">
+                        {entityName}
+                      </code>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {scanResult.data.length > 0 ? (
+                <EntityQueryResultsTable data={scanResult.data} />
+              ) : (
+                <p className="text-muted-foreground">No items found</p>
+              )}
+            </>
+          ) : (
+            <div>
+              <p className="text-red-500">
+                <strong>Error:</strong> {scanResult.error}
+              </p>
+              {scanResult.errorType && (
+                <p className="text-xs text-muted-foreground">
+                  Type: {scanResult.errorType}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
