@@ -5,140 +5,185 @@ import { describe, expect, it } from "vitest";
 import { buildSchemaCache } from "./build-schema-cache";
 
 describe("buildSchemaCache", () => {
-  it("should parse Company entity correctly", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+  it("should parse Employee entity correctly", async () => {
+    const cache = await buildSchemaCache(["test/dynamo/entities/employee.ts"]);
 
-    const company = cache.entities.find((e) => e.name === "company");
-    expect(company).toBeDefined();
-    expect(company?.name).toBe("company");
-    expect(company?.version).toBe("1");
-    expect(company?.service).toBe("model");
+    const employee = cache.entities.find((e) => e.name === "employee");
+    expect(employee).toBeDefined();
+    expect(employee?.name).toBe("employee");
+    expect(employee?.version).toBe("1");
+    expect(employee?.service).toBe("taskapp");
 
-    // Check primary index (should be named "primary")
-    expect(company?.indexes.primary).toBeDefined();
-    expect(company?.indexes.primary.pk.field).toBe("pk");
-    expect(company?.indexes.primary.pk.composite).toEqual([]);
+    // Check primary index (named "employee")
+    expect(employee?.indexes.employee).toBeDefined();
+    expect(employee?.indexes.employee.pk.field).toBe("pk");
+    expect(employee?.indexes.employee.pk.composite).toEqual(["employee"]);
 
-    expect(company?.indexes.primary.sk).toBeDefined();
-    expect(company?.indexes.primary.sk?.field).toBe("sk");
-    expect(company?.indexes.primary.sk?.composite).toEqual(["companyId"]);
+    expect(employee?.indexes.employee.sk).toBeDefined();
+    expect(employee?.indexes.employee.sk?.field).toBe("sk");
+    expect(employee?.indexes.employee.sk?.composite).toEqual([]);
 
     // Ensure no null values in composite arrays
-    expect(company?.indexes.primary.pk.composite).not.toContain(null);
-    expect(company?.indexes.primary.sk?.composite).not.toContain(null);
+    expect(employee?.indexes.employee.pk.composite).not.toContain(null);
+    expect(employee?.indexes.employee.sk?.composite).not.toContain(null);
   });
 
-  it("should parse FileModel entity correctly", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+  it("should parse Task entity correctly", async () => {
+    const cache = await buildSchemaCache(["test/dynamo/entities/task.ts"]);
 
-    const fileModel = cache.entities.find((e) => e.name === "fileModel");
-    expect(fileModel).toBeDefined();
-    expect(fileModel?.name).toBe("fileModel");
-    expect(fileModel?.version).toBe("1");
-    expect(fileModel?.service).toBe("model");
+    const task = cache.entities.find((e) => e.name === "task");
+    expect(task).toBeDefined();
+    expect(task?.name).toBe("task");
+    expect(task?.version).toBe("1");
+    expect(task?.service).toBe("taskapp");
 
     // Check primary index
-    expect(fileModel?.indexes.primary).toBeDefined();
-    expect(fileModel?.indexes.primary.pk.field).toBe("pk");
-    expect(fileModel?.indexes.primary.pk.composite).toEqual(["companyId"]);
+    expect(task?.indexes.task).toBeDefined();
+    expect(task?.indexes.task.pk.field).toBe("pk");
+    expect(task?.indexes.task.pk.composite).toEqual(["task"]);
 
-    expect(fileModel?.indexes.primary.sk).toBeDefined();
-    expect(fileModel?.indexes.primary.sk?.field).toBe("sk");
-    expect(fileModel?.indexes.primary.sk?.composite).toEqual(["fileId"]);
+    expect(task?.indexes.task.sk).toBeDefined();
+    expect(task?.indexes.task.sk?.field).toBe("sk");
+    expect(task?.indexes.task.sk?.composite).toEqual(["project", "employee"]);
 
     // Ensure no null values in composite arrays
-    expect(fileModel?.indexes.primary.pk.composite).not.toContain(null);
-    expect(fileModel?.indexes.primary.pk.composite).not.toContain(undefined);
-    expect(fileModel?.indexes.primary.sk?.composite).not.toContain(null);
-    expect(fileModel?.indexes.primary.sk?.composite).not.toContain(undefined);
+    expect(task?.indexes.task.pk.composite).not.toContain(null);
+    expect(task?.indexes.task.pk.composite).not.toContain(undefined);
+    expect(task?.indexes.task.sk?.composite).not.toContain(null);
+    expect(task?.indexes.task.sk?.composite).not.toContain(undefined);
   });
 
-  it("should parse CompanyModel entity with GSI correctly", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+  it("should parse Office entity with GSI correctly", async () => {
+    const cache = await buildSchemaCache(["test/dynamo/entities/office.ts"]);
 
-    const companyModel = cache.entities.find((e) => e.name === "companyModel");
-    expect(companyModel).toBeDefined();
-    expect(companyModel?.name).toBe("companyModel");
-    expect(companyModel?.version).toBe("1");
-    expect(companyModel?.service).toBe("model");
+    const office = cache.entities.find((e) => e.name === "office");
+    expect(office).toBeDefined();
+    expect(office?.name).toBe("office");
+    expect(office?.version).toBe("1");
+    expect(office?.service).toBe("taskapp");
 
-    // Check primary index
-    expect(companyModel?.indexes.primary).toBeDefined();
-    expect(companyModel?.indexes.primary.pk.field).toBe("pk");
-    expect(companyModel?.indexes.primary.pk.composite).toEqual(["companyId"]);
+    // Check primary index (named "locations")
+    expect(office?.indexes.locations).toBeDefined();
+    expect(office?.indexes.locations.pk.field).toBe("pk");
+    expect(office?.indexes.locations.pk.composite).toEqual(["country", "state"]);
 
-    expect(companyModel?.indexes.primary.sk).toBeDefined();
-    expect(companyModel?.indexes.primary.sk?.field).toBe("sk");
-    expect(companyModel?.indexes.primary.sk?.composite).toEqual(["createdAt"]);
+    expect(office?.indexes.locations.sk).toBeDefined();
+    expect(office?.indexes.locations.sk?.field).toBe("sk");
+    expect(office?.indexes.locations.sk?.composite).toEqual(["city", "zip", "office"]);
 
-    // Check GSI
-    expect(companyModel?.indexes.byStatus).toBeDefined();
-    expect(companyModel?.indexes.byStatus.pk.field).toBe("gsi1pk");
-    expect(companyModel?.indexes.byStatus.pk.composite).toEqual(["companyId"]);
+    // Check GSI (named "office")
+    expect(office?.indexes.office).toBeDefined();
+    expect(office?.indexes.office.pk.field).toBe("gsi1pk");
+    expect(office?.indexes.office.pk.composite).toEqual(["office"]);
 
-    expect(companyModel?.indexes.byStatus.sk).toBeDefined();
-    expect(companyModel?.indexes.byStatus.sk?.field).toBe("gsi1sk");
-    expect(companyModel?.indexes.byStatus.sk?.composite).toEqual([
-      "status",
-      "createdAt",
-    ]);
+    expect(office?.indexes.office.sk).toBeDefined();
+    expect(office?.indexes.office.sk?.field).toBe("gsi1sk");
+    expect(office?.indexes.office.sk?.composite).toEqual([]);
 
     // Ensure no null values in composite arrays
-    expect(companyModel?.indexes.primary.pk.composite).not.toContain(null);
-    expect(companyModel?.indexes.primary.sk?.composite).not.toContain(null);
-    expect(companyModel?.indexes.byStatus.pk.composite).not.toContain(null);
-    expect(companyModel?.indexes.byStatus.sk?.composite).not.toContain(null);
+    expect(office?.indexes.locations.pk.composite).not.toContain(null);
+    expect(office?.indexes.locations.sk?.composite).not.toContain(null);
+    expect(office?.indexes.office.pk.composite).not.toContain(null);
+    expect(office?.indexes.office.sk?.composite).not.toContain(null);
   });
 
   it("should parse all three entities", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+    const cache = await buildSchemaCache([
+      "test/dynamo/entities/employee.ts",
+      "test/dynamo/entities/task.ts",
+      "test/dynamo/entities/office.ts",
+    ]);
 
     expect(cache.entities).toHaveLength(3);
 
     const entityNames = cache.entities.map((e) => e.name);
-    expect(entityNames).toContain("company");
-    expect(entityNames).toContain("fileModel");
-    expect(entityNames).toContain("companyModel");
+    expect(entityNames).toContain("employee");
+    expect(entityNames).toContain("task");
+    expect(entityNames).toContain("office");
   });
 
   it("should extract attributes with full metadata", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+    const cache = await buildSchemaCache(["test/dynamo/entities/employee.ts"]);
 
-    const company = cache.entities.find((e) => e.name === "company");
-    expect(company?.attributes).toBeDefined();
+    const employee = cache.entities.find((e) => e.name === "employee");
+    expect(employee?.attributes).toBeDefined();
 
     // Check attribute names are present
-    expect(company?.attributes.companyId).toBeDefined();
-    expect(company?.attributes.companyName).toBeDefined();
-    expect(company?.attributes.createdAt).toBeDefined();
-    expect(company?.attributes.updatedAt).toBeDefined();
+    expect(employee?.attributes.employee).toBeDefined();
+    expect(employee?.attributes.firstName).toBeDefined();
+    expect(employee?.attributes.lastName).toBeDefined();
+    expect(employee?.attributes.office).toBeDefined();
+    expect(employee?.attributes.title).toBeDefined();
+    expect(employee?.attributes.team).toBeDefined();
 
     // Check attribute metadata
-    expect(company?.attributes.companyId.type).toBe("string");
-    expect(company?.attributes.companyId.required).toBe(true);
-    expect(company?.attributes.companyId.readonly).toBe(true);
+    expect(employee?.attributes.employee.type).toBe("string");
+    expect(employee?.attributes.firstName.type).toBe("string");
+    expect(employee?.attributes.lastName.type).toBe("string");
+  });
 
-    expect(company?.attributes.companyName.type).toBe("string");
-    expect(company?.attributes.companyName.required).toBe(true);
+  it("should parse Employee entity with multiple GSIs", async () => {
+    const cache = await buildSchemaCache(["test/dynamo/entities/employee.ts"]);
 
-    expect(company?.attributes.fileCount.type).toBe("number");
-    expect(company?.attributes.fileCount.required).toBe(true);
-    expect(company?.attributes.fileCount.default).toBeDefined();
+    const employee = cache.entities.find((e) => e.name === "employee");
+    expect(employee).toBeDefined();
 
-    // Check map type with properties
-    expect(company?.attributes.publicCompanyInfo.type).toBe("map");
-    expect(company?.attributes.publicCompanyInfo.properties).toBeDefined();
-    expect(company?.attributes.publicCompanyInfo.properties?.cik).toBeDefined();
-    expect(company?.attributes.publicCompanyInfo.properties?.cik.type).toBe("string");
-    expect(company?.attributes.publicCompanyInfo.properties?.cik.required).toBe(true);
+    // Check that multiple GSIs are parsed
+    expect(employee?.indexes.coworkers).toBeDefined();
+    expect(employee?.indexes.teams).toBeDefined();
+    expect(employee?.indexes.employeeLookup).toBeDefined();
+    expect(employee?.indexes.roles).toBeDefined();
+    expect(employee?.indexes.directReports).toBeDefined();
 
-    // Check set type
-    expect(company?.attributes.modifiedBy.type).toBe("set");
-    expect(company?.attributes.modifiedBy.items).toBe("string");
+    // Check coworkers GSI
+    expect(employee?.indexes.coworkers.pk.field).toBe("gsi1pk");
+    expect(employee?.indexes.coworkers.pk.composite).toEqual(["office"]);
+    expect(employee?.indexes.coworkers.sk?.composite).toEqual([
+      "team",
+      "title",
+      "employee",
+    ]);
+
+    // Check teams GSI
+    expect(employee?.indexes.teams.pk.field).toBe("gsi2pk");
+    expect(employee?.indexes.teams.pk.composite).toEqual(["team"]);
+    expect(employee?.indexes.teams.sk?.composite).toEqual([
+      "title",
+      "salary",
+      "employee",
+    ]);
+  });
+
+  it("should parse Task entity with multiple GSIs", async () => {
+    const cache = await buildSchemaCache(["test/dynamo/entities/task.ts"]);
+
+    const task = cache.entities.find((e) => e.name === "task");
+    expect(task).toBeDefined();
+
+    // Check multiple indexes
+    expect(task?.indexes.task).toBeDefined();
+    expect(task?.indexes.project).toBeDefined();
+    expect(task?.indexes.assigned).toBeDefined();
+
+    // Check project GSI
+    expect(task?.indexes.project.indexName).toBe("gsi1");
+    expect(task?.indexes.project.pk.field).toBe("gsi1pk");
+    expect(task?.indexes.project.pk.composite).toEqual(["project"]);
+    expect(task?.indexes.project.sk?.composite).toEqual(["employee", "task"]);
+
+    // Check assigned GSI
+    expect(task?.indexes.assigned.indexName).toBe("gsi3");
+    expect(task?.indexes.assigned.pk.field).toBe("gsi3pk");
+    expect(task?.indexes.assigned.pk.composite).toEqual(["employee"]);
+    expect(task?.indexes.assigned.sk?.composite).toEqual(["project", "task"]);
   });
 
   it("should ensure no null/undefined values in any composite arrays", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+    const cache = await buildSchemaCache([
+      "test/dynamo/entities/employee.ts",
+      "test/dynamo/entities/task.ts",
+      "test/dynamo/entities/office.ts",
+    ]);
 
     for (const entity of cache.entities) {
       for (const [indexName, index] of Object.entries(entity.indexes)) {
@@ -160,10 +205,18 @@ describe("buildSchemaCache", () => {
   });
 
   it("should include metadata about the cache generation", async () => {
-    const cache = await buildSchemaCache(["test/dynamo/service.ts"]);
+    const cache = await buildSchemaCache([
+      "test/dynamo/entities/employee.ts",
+      "test/dynamo/entities/task.ts",
+      "test/dynamo/entities/office.ts",
+    ]);
 
     expect(cache.generatedAt).toBeDefined();
     expect(cache.config).toBeDefined();
-    expect(cache.config.entityConfigPaths).toEqual(["test/dynamo/service.ts"]);
+    expect(cache.config.entityConfigPaths).toEqual([
+      "test/dynamo/entities/employee.ts",
+      "test/dynamo/entities/task.ts",
+      "test/dynamo/entities/office.ts",
+    ]);
   });
 });
