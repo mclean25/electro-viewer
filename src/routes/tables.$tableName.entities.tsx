@@ -54,7 +54,7 @@ export const Route = createFileRoute("/tables/$tableName/entities")({
 function EntitiesViewerPending() {
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">ElectroDB Entity Definitions</h1>
+      <h1 className="mb-4 text-xl font-bold">Entity Definitions</h1>
       <p className="mb-6 text-sm text-muted-foreground">Loading...</p>
 
       <div className="rounded-md border">
@@ -188,9 +188,7 @@ function EntitiesViewer() {
 
   return (
     <div>
-      <h1 className="mb-4 text-xl font-bold">
-        ElectroDB Entity Definitions for {tableName}
-      </h1>
+      <h1 className="mb-4 text-xl font-bold">Entity Definitions for {tableName}</h1>
       {!schemas && (
         <div className="text-muted-foreground">Didn't load any schemas...</div>
       )}

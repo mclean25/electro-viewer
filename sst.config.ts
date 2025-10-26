@@ -59,6 +59,11 @@ export default $config({
       },
       ttl: "expireAt",
       deletionProtection: false,
+      transform: {
+        table: {
+          name: "my-test-table",
+        },
+      },
     });
 
     new sst.aws.TanStackStart("Web", {
