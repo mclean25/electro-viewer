@@ -5,7 +5,7 @@
 Electro Viewer is a tool to help you quickly browse your ElectroDB enties by reading the configuration
 files in your project.
 
-<img width="3466" height="2748" alt="CleanShot 2025-10-26 at 12 21 19@2x" src="https://github.com/user-attachments/assets/e61d503f-11a9-47e2-80b0-51dd59ea91f5" />
+<img width="3492" height="2558" alt="CleanShot 2025-10-26 at 12 27 16@2x-min" src="https://github.com/user-attachments/assets/99096c54-1e66-4909-8032-59f1436e9550" />
 
 ## Features
 
@@ -22,7 +22,7 @@ files in your project.
 - [ ] Delete support
 - [ ] Update support
 - [ ] Custom Template String support
-- [ ] Scan support
+- [x] Scan support
 - [ ] Run arbitrary queries
 - [ ] Query read units used statistics
 
