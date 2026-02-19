@@ -2,6 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { Globe, Table, User } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Logo from "@/assets/Logo.svg";
+import pkg from "../../package.json";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -91,8 +92,9 @@ export function SideNav({
       className="fixed left-0 top-0 h-screen border-r border-border bg-background p-6 overflow-y-auto"
       style={{ width: `${width}px` }}
     >
-      <Link to="/" className="flex justify-center mb-6">
+      <Link to="/" className="flex flex-col items-center mb-6 gap-1">
         <img src={Logo} alt="Electro Viewer" className="h-12 w-auto" />
+        <span className="text-xs text-muted-foreground">v{pkg.version}</span>
       </Link>
 
       <div className="border-t border-border -mx-6 mb-6" />
