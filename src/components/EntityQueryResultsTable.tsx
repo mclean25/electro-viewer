@@ -42,9 +42,14 @@ export function EntityQueryResultsTable({
 
     // Filter out ElectroDB internal metadata columns when querying a specific entity
     // and version since these are not useful if they're provided in the query keys
-    const columnsToDisplay = Object.keys(firstItem).filter(
+    const allKeys = Object.keys(firstItem).filter(
       (key) => key !== "__edb_e__" && key !== "__edb_v__",
     );
+
+    // Put pk/sk first, then all other keys in their original order
+    const pkSkKeys = ["pk", "sk"].filter((k) => allKeys.includes(k));
+    const remainingKeys = allKeys.filter((k) => k !== "pk" && k !== "sk");
+    const columnsToDisplay = [...pkSkKeys, ...remainingKeys];
 
     return columnsToDisplay.map((key) =>
       columnHelper.accessor(key, {
