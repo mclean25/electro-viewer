@@ -18,6 +18,13 @@ export const Route = createRootRoute({
         title: "Electro Viewer",
       },
     ],
+    links: [
+      {
+        rel: "icon",
+        type: "image/svg+xml",
+        href: "/favicon.svg",
+      },
+    ],
   }),
   component: RootComponent,
   notFoundComponent: () => (
