@@ -253,6 +253,16 @@ const scanDynamoDB = createServerFn({
 
 const searchSchema = z.object({
   tab: z.enum(["query", "scan", "insert"]).default("query"),
+
+  // Query tab
+  selectedIndex: z.string().optional(),
+  pkFields: z.record(z.string(), z.string()).optional(),
+  skFields: z.record(z.string(), z.string()).optional(),
+
+  // Scan tab
+  scanIndex: z.string().optional(),
+  filterByEntity: z.boolean().default(true),
+  scanLimit: z.number().min(1).max(1000).default(100),
 });
 
 export const Route = createFileRoute("/tables/$tableName/entity/$entityName")({
@@ -311,7 +321,7 @@ function EntityDetail() {
 
   const handleTabChange = (value: string) => {
     navigate({
-      search: { tab: value as "query" | "scan" | "insert" },
+      search: (prev) => ({ ...prev, tab: value as "query" | "scan" | "insert" }),
     });
   };
 
@@ -370,8 +380,13 @@ function QueryTab({
   tableName: string;
   entityName: string;
 }) {
+  const navigate = Route.useNavigate();
+  const search = Route.useSearch();
   const firstIndex = Object.keys(schema.indexes)[0];
-  const [selectedIndex, setSelectedIndex] = useState(firstIndex);
+  const selectedIndex =
+    search.selectedIndex && schema.indexes[search.selectedIndex]
+      ? search.selectedIndex
+      : firstIndex;
   const [queryResult, setQueryResult] = useState<any>(null);
   const [isQuerying, setIsQuerying] = useState(false);
 
@@ -380,12 +395,20 @@ function QueryTab({
 
   const form = useForm({
     defaultValues: {
-      pkValues: {} as Record<string, string>,
-      skValues: {} as Record<string, string>,
+      pkValues: search.pkFields ?? ({} as Record<string, string>),
+      skValues: search.skFields ?? ({} as Record<string, string>),
     },
     onSubmit: async ({ value }) => {
       setIsQuerying(true);
       setQueryResult(null);
+
+      navigate({
+        search: (prev) => ({
+          ...prev,
+          pkFields: Object.keys(value.pkValues).length > 0 ? value.pkValues : undefined,
+          skFields: Object.keys(value.skValues).length > 0 ? value.skValues : undefined,
+        }),
+      });
 
       try {
         const pk = buildElectroDBKey(
@@ -468,7 +491,14 @@ function QueryTab({
         <Select
           value={selectedIndex}
           onValueChange={(value) => {
-            setSelectedIndex(value);
+            navigate({
+              search: (prev) => ({
+                ...prev,
+                selectedIndex: value,
+                pkFields: undefined,
+                skFields: undefined,
+              }),
+            });
             form.reset();
             setQueryResult(null);
           }}
@@ -720,7 +750,7 @@ function InsertTab({
         if (result.success) {
           setTimeout(() => {
             navigate({
-              search: { tab: "query" },
+              search: (prev) => ({ ...prev, tab: "query" }),
             });
           }, 2000);
         }
@@ -916,11 +946,13 @@ function ScanTab({
   tableName: string;
   entityName: string;
 }) {
-  const [selectedIndex, setSelectedIndex] = useState<string | undefined>(undefined);
+  const navigate = Route.useNavigate();
+  const search = Route.useSearch();
+  const selectedIndex = search.scanIndex;
+  const filterByEntity = search.filterByEntity;
+  const limit = search.scanLimit;
   const [scanResult, setScanResult] = useState<any>(null);
   const [isScanning, setIsScanning] = useState(false);
-  const [filterByEntity, setFilterByEntity] = useState(true);
-  const [limit, setLimit] = useState(100);
   const filterByEntityId = useId();
   const limitId = useId();
 
@@ -964,7 +996,12 @@ function ScanTab({
             <Select
               value={selectedIndex || "main"}
               onValueChange={(value) => {
-                setSelectedIndex(value === "main" ? undefined : value);
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    scanIndex: value === "main" ? undefined : value,
+                  }),
+                });
                 setScanResult(null);
               }}
             >
@@ -990,7 +1027,11 @@ function ScanTab({
             <Checkbox
               id={filterByEntityId}
               checked={filterByEntity}
-              onCheckedChange={(checked) => setFilterByEntity(checked === true)}
+              onCheckedChange={(checked) => {
+                navigate({
+                  search: (prev) => ({ ...prev, filterByEntity: checked === true }),
+                });
+              }}
             />
             <label
               htmlFor={filterByEntityId}
@@ -1011,7 +1052,11 @@ function ScanTab({
               min={1}
               max={1000}
               value={limit}
-              onChange={(e) => setLimit(Number(e.target.value))}
+              onChange={(e) => {
+                navigate({
+                  search: (prev) => ({ ...prev, scanLimit: Number(e.target.value) }),
+                });
+              }}
               className="w-32 bg-background"
             />
             <p className="text-xs text-muted-foreground mt-1">
