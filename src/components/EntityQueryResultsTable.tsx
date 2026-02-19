@@ -9,8 +9,17 @@ import {
   type SortingState,
   useReactTable,
 } from "@tanstack/react-table";
+import JsonView from "@uiw/react-json-view";
+import { Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
   Table,
@@ -24,6 +33,66 @@ import {
 interface EntityQueryResultsTableProps {
   data: Record<string, any>[];
   pageSize?: number;
+}
+
+function JsonCellValue({ value, columnKey }: { value: object; columnKey: string }) {
+  const isEmpty =
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    Object.keys(value).length === 0;
+
+  if (isEmpty) {
+    return <span className="font-mono text-xs text-muted-foreground">{"{}"}</span>;
+  }
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 font-mono text-xs hover:bg-muted cursor-pointer border border-border/50"
+        >
+          <span className="text-muted-foreground">{"{ JSON"}</span>
+          <Search className="size-3 text-muted-foreground" />
+          <span className="text-muted-foreground">{"}"}</span>
+        </button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="font-mono text-sm">{columnKey}</DialogTitle>
+        </DialogHeader>
+        <div className="overflow-auto p-6 pt-4">
+          <JsonView
+            value={value}
+            style={
+              {
+                "--w-rjv-background-color": "transparent",
+                "--w-rjv-color": "#e2e8f0",
+                "--w-rjv-key-string": "#7dd3fc",
+                "--w-rjv-quotes-color": "#7dd3fc",
+                "--w-rjv-type-string-color": "#86efac",
+                "--w-rjv-quotes-string-color": "#86efac",
+                "--w-rjv-type-int-color": "#fbbf24",
+                "--w-rjv-type-float-color": "#fbbf24",
+                "--w-rjv-type-bigint-color": "#fbbf24",
+                "--w-rjv-type-boolean-color": "#f472b6",
+                "--w-rjv-type-null-color": "#f87171",
+                "--w-rjv-type-nan-color": "#f87171",
+                "--w-rjv-type-undefined-color": "#94a3b8",
+                "--w-rjv-curlybraces-color": "#cbd5e1",
+                "--w-rjv-brackets-color": "#cbd5e1",
+                "--w-rjv-colon-color": "#cbd5e1",
+                "--w-rjv-line-color": "#334155",
+                "--w-rjv-info-color": "#64748b",
+                "--w-rjv-arrow-color": "#94a3b8",
+              } as React.CSSProperties
+            }
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 export function EntityQueryResultsTable({
@@ -61,11 +130,7 @@ export function EntityQueryResultsTable({
             return <span className="text-muted-foreground">null</span>;
           }
           if (typeof value === "object") {
-            return (
-              <pre className="m-0 max-w-xs overflow-auto rounded bg-muted p-1 text-xs">
-                {JSON.stringify(value, null, 2)}
-              </pre>
-            );
+            return <JsonCellValue value={value} columnKey={key} />;
           }
           return <span className="font-mono text-xs">{String(value)}</span>;
         },
