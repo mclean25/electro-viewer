@@ -88,7 +88,7 @@ function TableLayoutPending() {
         </div>
       </div>
       <div className="ml-64 flex-1">
-        <div className="container mx-auto py-8 px-8 font-mono">
+        <div className="w-full py-8 px-8 font-mono">
           <div className="h-8 w-48 animate-pulse rounded bg-muted" />
         </div>
       </div>
@@ -101,7 +101,7 @@ function TableLayout() {
   const [sidebarWidth, setSidebarWidth] = useState(256);
 
   return (
-    <div className="flex">
+    <div className="flex h-screen overflow-hidden">
       <SideNav
         currentTable={tableName}
         tables={tables}
@@ -111,8 +111,8 @@ function TableLayout() {
         width={sidebarWidth}
         onWidthChange={setSidebarWidth}
       />
-      <div className="flex-1" style={{ marginLeft: `${sidebarWidth}px` }}>
-        <div className="container mx-auto pt-6 pb-8 px-8 font-mono">
+      <div className="flex-1 overflow-auto" style={{ marginLeft: `${sidebarWidth}px` }}>
+        <div className="w-full pt-6 pb-8 px-8 font-mono">
           <Outlet />
         </div>
       </div>
