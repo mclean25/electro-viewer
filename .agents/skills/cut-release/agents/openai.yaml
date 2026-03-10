@@ -1,0 +1,4 @@
+interface:
+  display_name: "Cut Release"
+  short_description: "Draft and publish GitHub releases"
+  default_prompt: "Use $cut-release to draft release notes and publish the next GitHub release."
